@@ -40,7 +40,7 @@
       <div class="analytics-card primary">
         <div class="analytics-icon">💰</div>
         <div class="analytics-content">
-          <div class="analytics-value">{{ totalSpent | currency:'INR' }}</div>
+          <div class="analytics-value" (click)="$event.stopPropagation()"><app-indian-currency [amount]="totalSpent"></app-indian-currency></div>
           <div class="analytics-label">Total Spent</div>
           <div class="analytics-trend" *ngIf="getSpendingTrend()">
             <div class="trend-header clickable-trend" 
@@ -67,7 +67,7 @@
       <div class="analytics-card secondary">
         <div class="analytics-icon">📅</div>
         <div class="analytics-content">
-          <div class="analytics-value">{{ averageMonthlySpend | currency:'INR' }}</div>
+          <div class="analytics-value" (click)="$event.stopPropagation()"><app-indian-currency [amount]="averageMonthlySpend"></app-indian-currency></div>
           <div class="analytics-label">Average Monthly</div>
           <div class="analytics-subtitle">Per month</div>
         </div>
@@ -106,7 +106,7 @@
         <div class="stat-item primary">
           <div class="stat-icon">💰</div>
           <div class="stat-content">
-            <div class="stat-value">{{ getCurrentMonthReport()?.totalAmount | currency:'INR' }}</div>
+            <div class="stat-value" (click)="$event.stopPropagation()"><app-indian-currency [amount]="getCurrentMonthReport()?.totalAmount || 0"></app-indian-currency></div>
             <div class="stat-label">Total Spent</div>
           </div>
         </div>
@@ -123,7 +123,7 @@
             <div class="stat-value" *ngIf="getMonthlyComparison().hasPreviousData" 
                  [class.positive]="getMonthlyComparison().change < 0" 
                  [class.negative]="getMonthlyComparison().change > 0">
-              {{ getMonthlyComparison().change | currency:'INR' }}
+              <app-indian-currency [amount]="getMonthlyComparison().change"></app-indian-currency>
             </div>
             <div class="stat-description" *ngIf="getMonthlyComparison().hasPreviousData">
               {{ getMonthlyComparison().status }}
@@ -225,15 +225,15 @@
           </div>
           <div class="report-arrow clickable-arrow" (click)="selectMonth(report.monthKey); $event.stopPropagation()" title="View detailed report">→</div>
         </div>
-        <div class="report-stats">
-          <div class="report-amount">{{ report.totalAmount | currency:'INR' }}</div>
+        <div class="report-stats" (click)="$event.stopPropagation()">
+          <div class="report-amount"><app-indian-currency [amount]="report.totalAmount"></app-indian-currency></div>
           <div class="report-count">{{ report.expenseCount }} expenses</div>
         </div>
         <div class="category-preview">
           <div class="category-item" *ngFor="let breakdown of report.categoryBreakdown.slice(0, 3)">
             <span class="category-icon" [style.background-color]="breakdown.category.color">{{ breakdown.category.icon }}</span>
             <span class="category-name">{{ breakdown.category.name }}</span>
-            <span class="category-amount">{{ breakdown.amount | currency:'INR' }}</span>
+            <span class="category-amount"><app-indian-currency [amount]="breakdown.amount"></app-indian-currency></span>
           </div>
         </div>
         <div class="report-footer">
@@ -263,7 +263,7 @@
             <h4 class="month-name">{{ report.monthName }}</h4>
             <div class="month-year">{{ report.year }}</div>
           </div>
-          <div class="list-item-amount">{{ report.totalAmount | currency:'INR' }}</div>
+          <div class="list-item-amount" (click)="$event.stopPropagation()"><app-indian-currency [amount]="report.totalAmount"></app-indian-currency></div>
           <div class="report-arrow clickable-arrow" (click)="selectMonth(report.monthKey); $event.stopPropagation()" title="View detailed report">→</div>
         </div>
         <div class="list-item-details">
@@ -305,7 +305,7 @@
   </div>
 
   <!-- Enhanced Detailed Month View -->
-  <div class="detailed-view" *ngIf="shouldShowDetailedView()">
+  <div class="detailed-view" *ngIf="shouldShowDetailedView()" [id]="'month-expenses-' + selectedMonth">
     <div class="detailed-header">
       <button class="back-btn" (click)="showDetailedView = false">
         <span class="back-icon">←</span>
@@ -329,7 +329,7 @@
         <div class="summary-card">
           <div class="summary-icon">💰</div>
           <div class="summary-content">
-            <div class="summary-value">{{ getFilteredTotalAmount() | currency:'INR' }}</div>
+            <div class="summary-value" (click)="$event.stopPropagation()"><app-indian-currency [amount]="getFilteredTotalAmount()"></app-indian-currency></div>
             <div class="summary-label">Total Spent</div>
           </div>
         </div>
@@ -343,7 +343,7 @@
         <div class="summary-card">
           <div class="summary-icon">📊</div>
           <div class="summary-content">
-            <div class="summary-value">{{ getAverageExpenseAmount() | currency:'INR' }}</div>
+            <div class="summary-value" (click)="$event.stopPropagation()"><app-indian-currency [amount]="getAverageExpenseAmount()"></app-indian-currency></div>
             <div class="summary-label">Average Per Expense</div>
           </div>
         </div>
@@ -360,7 +360,7 @@
       <div class="breakdown-section">
         <div class="section-header">
           <h4>Category Breakdown</h4>
-          <div class="breakdown-total">Total: {{ getFilteredTotalAmount() | currency:'INR' }}</div>
+          <div class="breakdown-total">Total: <app-indian-currency [amount]="getFilteredTotalAmount()"></app-indian-currency></div>
         </div>
         <div class="category-breakdown">
           <div class="category-item-detailed" *ngFor="let breakdown of getFilteredCategoryBreakdown()" (click)="showCategoryExpenses(breakdown.category)">
@@ -372,7 +372,7 @@
               </div>
             </div>
             <div class="category-amounts">
-              <div class="amount-primary">{{ breakdown.amount | currency:'INR' }}</div>
+              <div class="amount-primary"><app-indian-currency [amount]="breakdown.amount"></app-indian-currency></div>
               <div class="amount-percentage">{{ getCategoryPercentage(breakdown) }}%</div>
             </div>
             <div class="category-progress">
@@ -416,7 +416,7 @@
               </div>
             </div>
             <div class="expense-amount">
-              <div class="amount-value">{{ expense.amount | currency:'INR' }}</div>
+              <div class="amount-value"><app-indian-currency [amount]="expense.amount"></app-indian-currency></div>
               <div class="amount-indicator" [class]="getAmountIndicator(expense.amount)">
                 {{ getAmountIndicator(expense.amount) }}
               </div>

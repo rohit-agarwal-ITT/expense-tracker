@@ -19,6 +19,7 @@ import { ChartConfigService } from '../../core/services/chart-config.service';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
+import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
 
 interface CategoryAnalysis {
   category: Category;
@@ -42,7 +43,7 @@ interface MonthlyData {
 @Component({
   selector: 'app-expense-analysis',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, LoadingComponent, BaseChartDirective],
+  imports: [CommonModule, FormsModule, RouterModule, LoadingComponent, BaseChartDirective, IndianCurrencyComponent],
   templateUrl: './expense-analysis.component.html',
   styleUrls: ['./expense-analysis.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

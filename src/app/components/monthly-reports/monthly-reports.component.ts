@@ -1,10 +1,14 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { ExpenseService } from '../../core/services/expense.service';
 import { CategoryService } from '../../core/services/category.service';
 import { FirebaseService } from '../../core/services/firebase.service';
 import { DialogService } from '../../core/services/dialog.service';
+import { ScrollService } from '../../core/services/scroll.service';
+import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
+import { formatIndianCurrency } from '../../core/utils/currency-format.util';
 import { Subscription, combineLatest } from 'rxjs';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
@@ -12,7 +16,7 @@ import { Category } from '../../core/models/category.model';
 @Component({
   selector: 'app-monthly-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule, IndianCurrencyComponent],
   templateUrl: './monthly-reports.component.html',
   styleUrls: ['./monthly-reports.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -63,6 +67,7 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     private categoryService: CategoryService,
     private firebaseService: FirebaseService,
     private dialogService: DialogService,
+    private scrollService: ScrollService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -258,7 +263,7 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     const displayMode = this.trendDisplayModes[report.monthKey] || 'percentage';
     const displayText = displayMode === 'percentage' 
       ? `${change > 0 ? '+' : ''}${change.toFixed(1)}%`
-      : `${amountChange > 0 ? '+' : ''}₹${Math.abs(amountChange).toLocaleString()}`;
+      : `${amountChange > 0 ? '+' : ''}${formatIndianCurrency(Math.abs(amountChange))}`;
     
 
     if (change > 50) {
@@ -919,6 +924,11 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
   selectMonth(monthKey: string) {
     this.selectedMonth = monthKey;
     this.showDetailedView = true;
+    this.cdr.markForCheck();
+
+    setTimeout(() => {
+      this.scrollService.scrollToElement(`month-expenses-${monthKey}`);
+    }, 100);
   }
 
   getSelectedMonthReport() {

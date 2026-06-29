@@ -126,13 +126,16 @@
 
   <!-- Quick Summary Cards -->
   <div class="summary-grid" *ngIf="!isLoading">
-    <div class="summary-card" *ngFor="let card of getQuickSummaryCards()">
+    <div class="summary-card" *ngFor="let card of quickSummaryCards; trackBy: trackSummaryCard">
       <div class="card-header">
         <span class="card-icon">{{ card.icon }}</span>
         <span class="card-title">{{ card.title }}</span>
       </div>
       <div class="card-content">
-        <div class="card-value">{{ card.value }}</div>
+        <div class="card-value" (click)="$event.stopPropagation()">
+          <app-indian-currency *ngIf="card.amount !== undefined" [amount]="card.amount"></app-indian-currency>
+          <ng-container *ngIf="card.amount === undefined">{{ card.value }}</ng-container>
+        </div>
         <div class="card-change" [class]="'trend-' + card.trend">
           <span class="change-icon">
             {{ card.trend === 'up' ? '📈' : card.trend === 'down' ? '📉' : '➡️' }}
@@ -182,11 +185,11 @@
             </div>
             <div class="analytics-item">
               <span class="analytics-label">Average Per Expense</span>
-              <span class="analytics-value">₹{{ getSpendingAnalytics().averagePerExpense.toFixed(0) }}</span>
+              <span class="analytics-value"><app-indian-currency [amount]="getSpendingAnalytics().averagePerExpense" [maximumFractionDigits]="0"></app-indian-currency></span>
             </div>
             <div class="analytics-item">
               <span class="analytics-label">Highest Expense</span>
-              <span class="analytics-value">₹{{ getSpendingAnalytics().highestExpense.toFixed(0) }}</span>
+              <span class="analytics-value"><app-indian-currency [amount]="getSpendingAnalytics().highestExpense" [maximumFractionDigits]="0"></app-indian-currency></span>
             </div>
             <div class="analytics-item">
               <span class="analytics-label">Recent Trend</span>
@@ -231,7 +234,7 @@
           <div class="summary-stats">
             <div class="stat-item">
               <span class="stat-label">Total</span>
-              <span class="stat-value">₹{{ getFilteredTotal() | number }}</span>
+              <span class="stat-value"><app-indian-currency [amount]="getFilteredTotal()"></app-indian-currency></span>
             </div>
             <div class="stat-item">
               <span class="stat-label">Period</span>
@@ -253,7 +256,7 @@
               <div class="bar-tooltip">
                 <div class="tooltip-category">{{ category?.name }}</div>
                 <div class="tooltip-percentage">{{ getCategoryPercentage(category?.id || '') }}%</div>
-                <div class="tooltip-amount">₹{{ categoryTotals[category?.id || ''] || 0 | number }}</div>
+                <div class="tooltip-amount"><app-indian-currency [amount]="categoryTotals[category?.id || ''] || 0"></app-indian-currency></div>
               </div>
             </div>
           </div>
@@ -298,12 +301,12 @@
                   <div class="stat-item">
                     <span class="stat-icon">💰</span>
                     <span class="stat-label">Average</span>
-                    <span class="stat-value">₹{{ (getExpensesByCategory(category?.id || '').length > 0 ? (categoryTotals[category?.id || ''] / getExpensesByCategory(category?.id || '').length) : 0).toFixed(0) }}</span>
+                    <span class="stat-value"><app-indian-currency [amount]="getExpensesByCategory(category?.id || '').length > 0 ? (categoryTotals[category?.id || ''] / getExpensesByCategory(category?.id || '').length) : 0" [maximumFractionDigits]="0"></app-indian-currency></span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-icon">📈</span>
                     <span class="stat-label">Highest</span>
-                    <span class="stat-value">₹{{ getMaxExpenseForCategory(category?.id || '') }}</span>
+                    <span class="stat-value"><app-indian-currency [amount]="getMaxExpenseForCategory(category?.id || '')" [maximumFractionDigits]="0"></app-indian-currency></span>
                   </div>
                 </div>
               </div>
@@ -322,7 +325,7 @@
             <!-- Category Amount and Actions -->
             <div class="category-amount">
               <div class="amount-display">
-                <div class="amount-value">₹{{ categoryTotals[category?.id || ''] || 0 | number }}</div>
+                <div class="amount-value"><app-indian-currency [amount]="categoryTotals[category?.id || ''] || 0"></app-indian-currency></div>
                 <div class="amount-trend" *ngIf="getCategoryTrend(category?.id || '')">
                   <span class="trend-icon">{{ getCategoryTrend(category?.id || '').icon }}</span>
                   <span class="trend-text">{{ getCategoryTrend(category?.id || '').text }}</span>
@@ -363,7 +366,7 @@
           <div class="expense-summary">
             <div class="summary-item">
               <span class="summary-label">{{ getFilterLabel() }}</span>
-              <span class="summary-value">₹{{ getFilteredTotal() | number }}</span>
+              <span class="summary-value"><app-indian-currency [amount]="getFilteredTotal()"></app-indian-currency></span>
             </div>
           </div>
           <button class="btn btn-sm btn-outline-primary" (click)="viewAllExpenses()">
@@ -387,7 +390,7 @@
                   <div class="expense-date">{{ expense.date | date:'MMM dd, yyyy' }}</div>
                 </div>
                 <div class="expense-amount">
-                  <div class="amount-value">₹{{ expense.amount | number }}</div>
+                  <div class="amount-value"><app-indian-currency [amount]="expense.amount"></app-indian-currency></div>
                   <div class="amount-indicator" [class]="getAmountIndicator(expense.amount)">
                     {{ getAmountIndicator(expense.amount) }}
                   </div>
@@ -486,7 +489,7 @@
                  [style.height.%]="(day.amount / getMaxSpendingAmount()) * 100">
               <div class="bar-tooltip">
                 <div class="tooltip-day">{{ day.day }}</div>
-                <div class="tooltip-amount">₹{{ day.amount | number }}</div>
+                <div class="tooltip-amount"><app-indian-currency [amount]="day.amount"></app-indian-currency></div>
                 <div class="tooltip-count">{{ day.count }} expenses</div>
               </div>
             </div>
@@ -508,7 +511,7 @@
                 <div class="expense-name">{{ expense.description || 'No description' }}</div>
                 <div class="expense-category">{{ getCategoryName(expense.categoryId) }}</div>
               </div>
-              <div class="expense-amount">₹{{ expense.amount | number }}</div>
+              <div class="expense-amount"><app-indian-currency [amount]="expense.amount"></app-indian-currency></div>
             </div>
           </div>
           <div class="empty-state compact" *ngIf="getTopExpenses(5).length === 0">

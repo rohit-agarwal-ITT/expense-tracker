@@ -8,6 +8,7 @@ import { FirebaseService } from '../../core/services/firebase.service';
 import { FilterStateService } from '../../core/services/filter-state.service';
 import { DialogService } from '../../core/services/dialog.service';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
+import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
 import { Subscription, combineLatest } from 'rxjs';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
@@ -47,7 +48,7 @@ interface Insight {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, LoadingComponent],
+  imports: [CommonModule, FormsModule, RouterModule, LoadingComponent, IndianCurrencyComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -85,6 +86,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   
   // New features
   showInsights: boolean = false;
+
+  quickSummaryCards: {
+    title: string;
+    value: string;
+    amount?: number;
+    change: string;
+    trend: 'up' | 'down' | 'stable';
+    icon: string;
+  }[] = [];
   
   // Loading states
   isLoading: boolean = true;
@@ -139,7 +149,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.calculateWeeklyData();
           this.calculationCache = { expenses, categories };
         }
-        
+
+        this.refreshQuickSummaryCards();
         this.cdr.markForCheck(); // Trigger change detection for OnPush
       })
     );
@@ -154,6 +165,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // Firebase observables will automatically load data when user is authenticated
     // No need for manual loadData() call as it creates redundant API requests
+
+    this.refreshQuickSummaryCards();
   }
 
   ngOnDestroy() {
@@ -429,6 +442,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       selectedMonthOnly: this.selectedMonthOnly,
       selectedYearOnly: this.selectedYearOnly
     });
+
+    this.refreshQuickSummaryCards();
+    this.cdr.markForCheck();
   }
 
   // Custom date range methods
@@ -472,7 +488,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         selectedMonthOnly: this.selectedMonthOnly,
         selectedYearOnly: this.selectedYearOnly
       });
-      
+
+      this.refreshQuickSummaryCards();
+      this.cdr.markForCheck();
     }
   }
 
@@ -1194,15 +1212,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   // Quick summary cards data
-  getQuickSummaryCards(): { title: string; value: string; change: string; trend: 'up' | 'down' | 'stable'; icon: string }[] {
+  refreshQuickSummaryCards(): void {
+    this.quickSummaryCards = this.buildQuickSummaryCards();
+  }
+
+  private buildQuickSummaryCards(): {
+    title: string;
+    value: string;
+    amount?: number;
+    change: string;
+    trend: 'up' | 'down' | 'stable';
+    icon: string;
+  }[] {
     const topCategory = this.getTopSpendingCategory();
     const filteredTotal = this.getFilteredTotal();
     const filteredExpenses = this.getFilteredExpenses();
+    const averagePerExpense = filteredTotal / Math.max(filteredExpenses.length, 1);
     
     return [
       {
         title: 'Total Spent',
-        value: `₹${filteredTotal.toLocaleString()}`,
+        value: '',
+        amount: filteredTotal,
         change: 'Current period',
         trend: 'stable',
         icon: '💰'
@@ -1216,7 +1247,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
       {
         title: 'Average Per Expense',
-        value: `₹${(filteredTotal / Math.max(filteredExpenses.length, 1)).toFixed(0)}`,
+        value: '',
+        amount: averagePerExpense,
         change: 'Per transaction',
         trend: 'stable',
         icon: '📈'
@@ -1231,6 +1263,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         icon: '🏷️'
       }
     ];
+  }
+
+  trackSummaryCard(index: number, card: { title: string }): string {
+    return card.title;
   }
 
   // View category analytics (detailed breakdown)

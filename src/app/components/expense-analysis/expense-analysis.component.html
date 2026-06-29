@@ -328,7 +328,7 @@
       <div class="warning-icon">⚠️</div>
       <div class="warning-text">
         <h3>Orphaned Expenses Detected</h3>
-        <p>You have {{ getOrphanedExpensesCount() }} expenses (₹{{ getOrphanedExpensesAmount() | number }}) with missing categories. 
+        <p>You have {{ getOrphanedExpensesCount() }} expenses (<app-indian-currency [amount]="getOrphanedExpensesAmount()"></app-indian-currency>) with missing categories. 
            These expenses reference category IDs that no longer exist in your categories list.</p>
         <div class="warning-actions">
           <button class="btn btn-outline" routerLink="/mapper">
@@ -357,7 +357,7 @@
           <span class="card-title">Total Expenses</span>
         </div>
         <div class="card-content">
-          <div class="card-value">₹{{ totalExpenses | number }}</div>
+          <div class="card-value"><app-indian-currency [amount]="totalExpenses"></app-indian-currency></div>
           <div class="card-subtitle">{{ totalExpenseCount }} transactions</div>
         </div>
       </div>
@@ -368,7 +368,7 @@
           <span class="card-title">Average per Expense</span>
         </div>
         <div class="card-content">
-          <div class="card-value">₹{{ averageExpenseAmount | number:'1.0-0' }}</div>
+          <div class="card-value"><app-indian-currency [amount]="averageExpenseAmount" [maximumFractionDigits]="0"></app-indian-currency></div>
           <div class="card-subtitle">Per transaction</div>
         </div>
       </div>
@@ -439,7 +439,7 @@
           <div class="category-stats">
             <div class="stat-item">
               <span class="stat-label">Total Amount</span>
-              <span class="stat-value">₹{{ analysis.totalAmount | number }}</span>
+              <span class="stat-value"><app-indian-currency [amount]="analysis.totalAmount"></app-indian-currency></span>
             </div>
             <div class="stat-item">
               <span class="stat-label">Percentage</span>
@@ -451,7 +451,7 @@
             </div>
             <div class="stat-item">
               <span class="stat-label">Average</span>
-              <span class="stat-value">₹{{ analysis.averageAmount | number:'1.0-0' }}</span>
+              <span class="stat-value"><app-indian-currency [amount]="analysis.averageAmount" [maximumFractionDigits]="0"></app-indian-currency></span>
             </div>
           </div>
         </div>
@@ -477,7 +477,7 @@
                  title="Click to view expenses for {{ month.month }} {{ month.year }}">
               <div class="month-header">
                 <span class="month-name">{{ month.month }} {{ month.year }}</span>
-                <span class="month-amount">₹{{ month.amount | number }}</span>
+                <span class="month-amount"><app-indian-currency [amount]="month.amount"></app-indian-currency></span>
               </div>
               <div class="month-bar">
                 <div class="bar-fill" 
@@ -517,7 +517,7 @@
         </div>
         <div class="category-info">
           <h4 class="category-name">{{ category.category.name }}</h4>
-          <div class="category-amount">₹{{ category.totalAmount | number }}</div>
+          <div class="category-amount"><app-indian-currency [amount]="category.totalAmount"></app-indian-currency></div>
           <div class="category-percentage">{{ category.percentage | number:'1.1-1' }}%</div>
         </div>
         <div class="category-trend" *ngIf="category.trend.trend !== 'stable'">

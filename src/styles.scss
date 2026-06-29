@@ -497,12 +497,6 @@ body {
   background: var(--gradient-secondary);
 }
 
-/* Enhanced Focus Styles */
-*:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
 /* Enhanced Selection Styles */
 ::selection {
   background: rgba(99, 102, 241, 0.3);

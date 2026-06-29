@@ -321,7 +321,10 @@
         <div class="d-flex align-items-center gap-3">
           <div class="expenses-summary" *ngIf="isExpensesListExpanded">
             <div class="total-amount">
-              {{bulkSelectionMode && selectedExpenseIds.size > 0 ? (getSelectedExpensesTotal() | currency:'INR') : (getTotalAmount() | currency:'INR')}}
+              <app-indian-currency
+                [amount]="bulkSelectionMode && selectedExpenseIds.size > 0 ? getSelectedExpensesTotal() : getTotalAmount()"
+                [abbreviate]="false">
+              </app-indian-currency>
             </div>
             <div class="expenses-count">
               {{bulkSelectionMode && selectedExpenseIds.size > 0 ? (selectedExpenseIds.size + (selectedExpenseIds.size === 1 ? ' expense' : ' expenses') + ' selected') : (getFilteredExpenses().length + ' expenses')}}
@@ -413,7 +416,7 @@
           <div class="expense-description">{{expense.description || 'No description'}}</div>
           <div class="expense-date">{{expense.date | date:'MMM dd, yyyy'}}</div>
           <div class="expense-right">
-            <div class="expense-amount">{{expense.amount | currency:'INR'}}</div>
+            <div class="expense-amount"><app-indian-currency [amount]="expense.amount" [abbreviate]="false"></app-indian-currency></div>
             <!-- Undo option when deleted -->
             <div class="expense-undo" *ngIf="isExpenseDeleted(expense.id)">
               <button class="btn-undo-inline" (click)="undoDelete(expense.id)">

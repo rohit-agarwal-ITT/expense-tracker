@@ -773,6 +773,11 @@ body {
   font-weight: 700;
   color: white;
   margin-bottom: 0.25rem;
+
+  app-indian-currency {
+    color: white;
+    -webkit-text-fill-color: white;
+  }
 }
 
 .expenses-count {

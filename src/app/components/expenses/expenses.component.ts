@@ -10,6 +10,7 @@ import { DialogService } from '../../core/services/dialog.service';
 import { ActionHistoryService } from '../../core/services/action-history.service';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
 import { Subscription, combineLatest } from 'rxjs';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
@@ -19,7 +20,7 @@ import html2canvas from 'html2canvas';
 @Component({
   selector: 'app-expenses',
   standalone: true,
-  imports: [CommonModule, FormsModule, LoadingComponent, SkeletonComponent],
+  imports: [CommonModule, FormsModule, LoadingComponent, SkeletonComponent, IndianCurrencyComponent],
   templateUrl: './expenses.component.html',
   styleUrls: ['./expenses.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -723,93 +724,8 @@ export class ExpensesComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck(); // Trigger change detection for OnPush
     
     try {
-      // Create HTML content for PDF
-      const htmlContent = this.generatePDFHTML(filteredExpenses);
-      
-      // Create a temporary container in current window
-      const tempContainer = document.createElement('div');
-      tempContainer.id = 'pdf-export-container';
-      tempContainer.style.position = 'absolute';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.top = '0';
-      tempContainer.style.width = '794px';
-      tempContainer.style.background = 'white';
-      tempContainer.style.zIndex = '-1';
-      tempContainer.style.padding = '20px';
-      tempContainer.style.visibility = 'visible';
-      tempContainer.style.opacity = '1';
-      document.body.appendChild(tempContainer);
-      
-      // Parse and inject HTML
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(htmlContent, 'text/html');
-      const bodyContent = doc.body;
-      const styles = doc.head.querySelectorAll('style');
-      
-      // Add styles to head
-      styles.forEach(style => {
-        const styleElement = document.createElement('style');
-        styleElement.textContent = style.textContent || '';
-        document.head.appendChild(styleElement);
-      });
-      
-      // Add content to container
-      tempContainer.innerHTML = bodyContent.innerHTML;
-      
-      // Wait for rendering
-      await new Promise(resolve => {
-        setTimeout(() => {
-          // Force reflow
-          tempContainer.offsetHeight;
-          resolve(true);
-        }, 500);
-      });
-      
-      // Use html2canvas to capture
-      const canvas = await html2canvas(tempContainer, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: tempContainer.scrollWidth,
-        height: tempContainer.scrollHeight
-      });
-      
-      // Calculate PDF dimensions
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      
-      // Create PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      let position = 0;
-      
-      // Add first page
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      
-      // Add additional pages if needed
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-      
-      // Save PDF
+      const pdf = this.buildExpensePdf(filteredExpenses);
       pdf.save(`expense_report_${new Date().toISOString().split('T')[0]}.pdf`);
-      
-      // Clean up
-      document.body.removeChild(tempContainer);
-      // Remove temporary styles
-      styles.forEach(() => {
-        const lastStyle = document.head.querySelector('style:last-of-type');
-        if (lastStyle) {
-          document.head.removeChild(lastStyle);
-        }
-      });
-      
       await this.dialogService.success('PDF downloaded successfully!');
     } catch (error) {
       console.error('Error exporting to PDF:', error);
@@ -818,6 +734,124 @@ export class ExpensesComponent implements OnInit, OnDestroy {
       this.isGeneratingPDF = false;
       this.cdr.markForCheck(); // Trigger change detection for OnPush to hide loader
     }
+  }
+
+  private buildExpensePdf(expenses: Expense[]): jsPDF {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentWidth = pageWidth - margin * 2;
+    const colWidths = [28, 72, 42, 38];
+    const colX = [
+      margin,
+      margin + colWidths[0],
+      margin + colWidths[0] + colWidths[1],
+      margin + colWidths[0] + colWidths[1] + colWidths[2]
+    ];
+    const lineHeight = 5;
+    let y = margin;
+
+    const ensureSpace = (requiredHeight: number) => {
+      if (y + requiredHeight > pageHeight - margin) {
+        pdf.addPage();
+        y = margin;
+        drawTableHeader();
+      }
+    };
+
+    const drawTableHeader = () => {
+      pdf.setFillColor(102, 126, 234);
+      pdf.rect(margin, y - 4, contentWidth, 8, 'F');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('Date', colX[0] + 1, y);
+      pdf.text('Description', colX[1] + 1, y);
+      pdf.text('Category', colX[2] + 1, y);
+      pdf.text('Amount', colX[3] + colWidths[3] - 1, y, { align: 'right' });
+      y += 8;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(33, 33, 33);
+    };
+
+    const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const dateRange = this.getDateRangeText();
+    const now = new Date().toLocaleString('en-IN');
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(20);
+    pdf.setTextColor(102, 126, 234);
+    pdf.text('Expense Report', pageWidth / 2, y, { align: 'center' });
+    y += 8;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.setTextColor(107, 114, 128);
+    pdf.text(`Generated on: ${now}`, pageWidth / 2, y, { align: 'center' });
+    y += 6;
+
+    pdf.setDrawColor(102, 126, 234);
+    pdf.setLineWidth(0.8);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 10;
+
+    pdf.setFontSize(11);
+    pdf.setTextColor(51, 51, 51);
+    pdf.text(`Period: ${dateRange}`, margin, y);
+    y += lineHeight;
+    pdf.text(`Total Expenses: ${expenses.length}`, margin, y);
+    y += lineHeight;
+    pdf.text(`Total Amount: Rs.${total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin, y);
+    y += 12;
+
+    drawTableHeader();
+
+    const sortedExpenses = [...expenses].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    sortedExpenses.forEach((expense, index) => {
+      const date = new Date(expense.date).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+      const description = expense.description?.trim() || 'No description';
+      const categoryName = this.getCategoryName(expense.categoryId) || 'Uncategorized';
+      const amount = `Rs.${expense.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      const descriptionLines = pdf.splitTextToSize(description, colWidths[1] - 2);
+      const categoryLines = pdf.splitTextToSize(categoryName, colWidths[2] - 2);
+      const rowLines = Math.max(descriptionLines.length, categoryLines.length, 1);
+      const rowHeight = rowLines * lineHeight + 2;
+
+      ensureSpace(rowHeight);
+
+      if (index % 2 === 0) {
+        pdf.setFillColor(249, 250, 251);
+        pdf.rect(margin, y - 3.5, contentWidth, rowHeight, 'F');
+      }
+
+      pdf.setFontSize(9);
+      pdf.setTextColor(33, 33, 33);
+      pdf.text(date, colX[0] + 1, y);
+      pdf.text(descriptionLines, colX[1] + 1, y);
+      pdf.text(categoryLines, colX[2] + 1, y);
+      pdf.text(amount, colX[3] + colWidths[3] - 1, y, { align: 'right' });
+      y += rowHeight;
+    });
+
+    ensureSpace(15);
+    pdf.setDrawColor(229, 231, 235);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 8;
+    pdf.setFontSize(9);
+    pdf.setTextColor(107, 114, 128);
+    pdf.text('This report was generated from Expense Tracker', pageWidth / 2, y, { align: 'center' });
+
+    return pdf;
   }
 
   generatePDFHTML(expenses: Expense[]): string {

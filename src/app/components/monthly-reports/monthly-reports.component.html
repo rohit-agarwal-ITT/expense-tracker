@@ -191,7 +191,7 @@
     <div class="section-header">
       <div class="header-left">
         <h3>Monthly Breakdown</h3>
-        <p>Click on any month to view detailed breakdown</p>
+        <p>Click on any month to view detailed breakdown. Filters sync with Dashboard and Analysis.</p>
       </div>
       <div class="header-right">
         <div class="reports-count">{{ getFilteredReports().length }} months</div>
@@ -199,14 +199,17 @@
     </div>
 
     <div class="year-quick-filter" *ngIf="showYearNavigation() && !isLoading">
-      <span class="year-quick-label">Year</span>
+      <div class="year-quick-heading">
+        <span class="year-quick-label">Browse by year</span>
+        <span class="year-quick-hint">Tap a year to filter · amount shown below</span>
+      </div>
       <div class="year-chip-row">
         <button
           type="button"
           class="year-chip"
           [class.active]="!filterYear"
           (click)="selectYearFilter('')">
-          All
+          All years
         </button>
         <button
           type="button"
@@ -217,24 +220,31 @@
           {{ year }}
         </button>
       </div>
+      <div class="year-selection-summary">
+        <div class="year-selection-title">
+          <span class="year-selection-name">{{ getSelectedYearScopeLabel() }}</span>
+          <span class="year-selection-subtitle">
+            {{ getSelectedYearScopeStats().monthCount }} months ·
+            {{ getSelectedYearScopeStats().expenseCount }} expenses
+          </span>
+        </div>
+        <div class="year-selection-total">
+          <span class="year-selection-total-label">{{ getSelectedYearTotalLabel() }}</span>
+          <span class="year-total-amount">
+            <app-indian-currency
+              [amount]="getSelectedYearScopeTotal()"
+              [maximumFractionDigits]="0">
+            </app-indian-currency>
+          </span>
+        </div>
+      </div>
     </div>
 
     <div class="reports-by-year" *ngIf="yearReportGroups.length > 0 && !isLoading">
       <section
         class="year-group"
         *ngFor="let group of yearReportGroups; trackBy: trackYearGroup">
-        <header class="year-group-header" *ngIf="yearReportGroups.length > 1">
-          <div class="year-group-title">
-            <span class="year-group-year">{{ group.year }}</span>
-            <span class="year-group-subtitle">{{ group.monthCount }} months · {{ group.expenseCount }} expenses</span>
-          </div>
-          <div class="year-group-total">
-            <span class="year-group-total-label">Year total</span>
-            <app-indian-currency [amount]="group.totalAmount"></app-indian-currency>
-          </div>
-        </header>
-
-        <div class="reports-grid">
+        <div class="reports-grid" [class.reports-grid--all-years]="!filterYear">
           <div
             class="report-card"
             *ngFor="let report of group.reports; trackBy: trackMonthReport"
@@ -242,7 +252,7 @@
             <div class="report-header">
               <div class="month-info">
                 <h4 class="month-name">{{ report.monthLongName || report.monthName }}</h4>
-                <div class="month-year" *ngIf="yearReportGroups.length <= 1">{{ report.year }}</div>
+                <div class="month-year" *ngIf="!filterYear">{{ report.year }}</div>
               </div>
               <div class="report-arrow clickable-arrow" (click)="selectMonth(report.monthKey); $event.stopPropagation()"
                 title="View detailed report">→</div>

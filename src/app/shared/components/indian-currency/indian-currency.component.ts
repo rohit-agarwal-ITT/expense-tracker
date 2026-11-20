@@ -34,8 +34,8 @@ import {
       position: relative;
       z-index: 2;
       pointer-events: auto;
-      -webkit-text-fill-color: #1e293b;
-      color: #1e293b;
+      color: inherit;
+      -webkit-text-fill-color: currentColor;
       font-size: inherit;
       font-weight: inherit;
       line-height: inherit;

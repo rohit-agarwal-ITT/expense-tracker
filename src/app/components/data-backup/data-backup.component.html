@@ -1,0 +1,194 @@
+<div class="data-backup-page page-shell">
+  <app-page-header
+    title="💾 Data backup & restore"
+    subtitle="Download a full copy of your data or upload a backup to recover after data loss">
+  </app-page-header>
+
+  <app-loading
+    *ngIf="isExporting || isRestoring || isReadingFile || isWipingData"
+    [message]="
+      isWipingData
+        ? 'Deleting all your data…'
+        : isRestoring
+          ? 'Restoring your data…'
+          : isReadingFile
+            ? 'Reading backup file…'
+            : 'Creating backup…'"
+    type="card">
+  </app-loading>
+
+  <section class="reminder-panel" *ngIf="!isExporting && !isRestoring">
+  <label class="option-row reminder-toggle">
+    <input
+      type="checkbox"
+      [(ngModel)]="monthlyReminderEnabled"
+      (ngModelChange)="onReminderToggle()" />
+    <span>Monthly backup reminder (every {{ reminderIntervalDays }} days on this device)</span>
+  </label>
+  <p
+    class="reminder-status"
+    [class.reminder-status--due]="reminderStatus?.isDue">
+    {{ reminderMessage }}
+  </p>
+  </section>
+
+  <div class="backup-layout" *ngIf="!isExporting && !isRestoring && !isWipingData">
+    <section class="backup-card backup-card--export">
+      <div class="backup-card__header">
+        <span class="backup-card__icon" aria-hidden="true">📤</span>
+        <div>
+          <h2>Download backup</h2>
+          <p>JSON file with expenses, categories, and optional trading &amp; settings</p>
+        </div>
+      </div>
+
+      <ul class="backup-tips">
+        <li>Store copies on Google Drive, OneDrive, or email yourself monthly.</li>
+        <li>Backups work even if Firebase is down — you can re-import anytime.</li>
+      </ul>
+
+      <div class="backup-options">
+        <label class="option-row">
+          <input type="checkbox" [(ngModel)]="includeTrades" />
+          <span>Include trading journal</span>
+        </label>
+        <label class="option-row">
+          <input type="checkbox" [(ngModel)]="includeUserSettings" />
+          <span>Include budget &amp; app settings</span>
+        </label>
+      </div>
+
+      <p class="last-backup" *ngIf="lastExportAt">
+        Last backup from this device: <strong>{{ formatDate(lastExportAt) }}</strong>
+      </p>
+
+      <button type="button" class="btn-primary" (click)="downloadBackup()">
+        Download backup file
+      </button>
+    </section>
+
+    <section class="backup-card backup-card--restore">
+      <div class="backup-card__header">
+        <span class="backup-card__icon" aria-hidden="true">📥</span>
+        <div>
+          <h2>Restore from backup</h2>
+          <p>Upload a <code>.json</code> file you exported earlier</p>
+        </div>
+      </div>
+
+      <ul class="backup-tips">
+        <li>Use <strong>Merge</strong> to add missing data without deleting what you have today.</li>
+        <li>Use <strong>Replace</strong> only when recovering from corruption or empty database.</li>
+      </ul>
+
+      <div class="restore-mode">
+        <span class="restore-mode__label">Restore mode</span>
+        <label class="mode-option">
+          <input
+            type="radio"
+            name="restoreMode"
+            value="merge"
+            [(ngModel)]="restoreMode" />
+          <span class="mode-title">Merge (recommended)</span>
+          <span class="mode-desc">Upsert records from the file by ID</span>
+        </label>
+        <label class="mode-option mode-option--danger">
+          <input
+            type="radio"
+            name="restoreMode"
+            value="replace"
+            [(ngModel)]="restoreMode" />
+          <span class="mode-title">Replace everything</span>
+          <span class="mode-desc">Clear cloud data, then import the file</span>
+        </label>
+      </div>
+
+      <ul class="file-picker-tips">
+        <li>
+          <strong>From Downloads:</strong> drag the <code>.json</code> file onto the box below (no Browse needed).
+        </li>
+        <li>
+          Windows often freezes when Browse opens the <strong>Downloads</strong> folder (OneDrive sync). Browse opens on
+          <strong>Desktop</strong> in Chrome/Edge; use drag-and-drop if you keep backups in Downloads.
+        </li>
+      </ul>
+
+      <input
+        #backupFileInput
+        type="file"
+        class="file-input-offscreen"
+        accept=".json"
+        tabindex="-1"
+        aria-hidden="true"
+        (change)="onBackupFileSelected($event)" />
+
+      <div
+        class="file-drop file-drop--primary"
+        [class.file-drop--active]="isDragOver"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onFileDrop($event)">
+        <span class="file-drop__lead">Drop backup file here</span>
+        <span class="file-drop__hint">Works from Downloads without opening Explorer</span>
+        <button type="button" class="btn-secondary file-drop__browse" (click)="openBackupFileDialog()">
+          {{ useModernFilePicker ? 'Browse (starts on Desktop)' : 'Browse for backup file' }}
+        </button>
+      </div>
+
+      <div class="pending-file" *ngIf="pendingBackup as backup">
+        <div class="pending-file__summary">
+          <strong>{{ pendingFileName }}</strong>
+          <span>
+            {{ backup.data.categories.length }} categories ·
+            {{ backup.data.expenses.length }} expenses ·
+            {{ backup.data.trades?.length ?? 0 }} trades
+          </span>
+          <span class="pending-file__date">Exported {{ formatDate(backup.exportedAt) }}</span>
+        </div>
+        <div class="pending-file__actions">
+          <button type="button" class="btn-secondary" (click)="clearPendingBackup()">Cancel</button>
+          <button type="button" class="btn-primary" (click)="restorePendingBackup()">
+            {{ restoreMode === 'replace' ? 'Replace & restore' : 'Restore backup' }}
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section
+    class="backup-card backup-card--danger-zone"
+    *ngIf="!isExporting && !isRestoring && !isWipingData">
+    <div class="backup-card__header">
+      <span class="backup-card__icon" aria-hidden="true">⚠️</span>
+      <div>
+        <h2>Delete all cloud data</h2>
+        <p>Remove every expense, category, and trade for this account</p>
+      </div>
+    </div>
+
+    <p class="danger-counts">
+      Current data:
+      <strong>{{ liveDataCounts.expenseCount }}</strong> expenses ·
+      <strong>{{ liveDataCounts.categoryCount }}</strong> categories ·
+      <strong>{{ liveDataCounts.tradeCount }}</strong> trades
+    </p>
+
+    <ul class="backup-tips danger-tips">
+      <li>Download a backup first unless you are sure you want an empty account.</li>
+      <li>Deletion is permanent and uses fast batch deletes in Firebase.</li>
+    </ul>
+
+    <label class="option-row">
+      <input type="checkbox" [(ngModel)]="wipeResetSettings" />
+      <span>Also reset budget &amp; app settings to defaults</span>
+    </label>
+
+    <button
+      type="button"
+      class="btn-danger"
+      (click)="wipeAllUserData()"
+      [disabled]="liveDataCounts.expenseCount === 0 && liveDataCounts.categoryCount === 0 && liveDataCounts.tradeCount === 0 && !wipeResetSettings">
+      Delete all my data
+    </button>
+  </section>
+</div>

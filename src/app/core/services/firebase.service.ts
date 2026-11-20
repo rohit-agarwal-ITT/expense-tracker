@@ -13,7 +13,8 @@ import {
   onSnapshot,
   DocumentData,
   QuerySnapshot,
-  setDoc
+  setDoc,
+  writeBatch
 } from 'firebase/firestore';
 import { Firestore } from '@angular/fire/firestore';
 import { Expense } from '../models/expense.model';
@@ -22,6 +23,8 @@ import { Trade } from '../models/trade.model';
 import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+
+const FIRESTORE_BATCH_LIMIT = 450;
 
 @Injectable({
   providedIn: 'root'
@@ -367,6 +370,32 @@ export class FirebaseService {
         console.warn('Document not found - likely a local-only expense');
         return;
       }
+      throw error;
+    }
+  }
+
+  /** Delete many expense docs in Firestore batches (much faster than one-by-one). */
+  async deleteExpensesByIds(expenseIds: string[]): Promise<number> {
+    if (expenseIds.length === 0) {
+      return 0;
+    }
+
+    const uniqueIds = [...new Set(expenseIds.filter((id) => !!id))];
+    let deleted = 0;
+
+    try {
+      for (let i = 0; i < uniqueIds.length; i += FIRESTORE_BATCH_LIMIT) {
+        const batch = writeBatch(this.firestore);
+        const chunk = uniqueIds.slice(i, i + FIRESTORE_BATCH_LIMIT);
+        for (const id of chunk) {
+          batch.delete(doc(this.firestore, 'expenses', id));
+        }
+        await batch.commit();
+        deleted += chunk.length;
+      }
+      return deleted;
+    } catch (error) {
+      console.error('Error batch deleting expenses:', error);
       throw error;
     }
   }

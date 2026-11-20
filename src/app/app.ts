@@ -7,6 +7,8 @@ import { RouteLoadingService } from './core/services/route-loading.service';
 import { DialogComponent } from './shared/components/dialog/dialog.component';
 import { LoadingComponent } from './shared/components/loading/loading.component';
 import { take, filter } from 'rxjs/operators';
+import { DialogService } from './core/services/dialog.service';
+import { BackupReminderService } from './core/services/backup-reminder.service';
 
 @Component({
   selector: 'app-root',
@@ -486,6 +488,8 @@ export class App implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private routeLoadingService: RouteLoadingService,
+    private backupReminderService: BackupReminderService,
+    private dialogService: DialogService,
     private cdr: ChangeDetectorRef
   ) {
     // Restore the last visited route on app initialization
@@ -499,6 +503,43 @@ export class App implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.setupScrollListener();
+    this.setupBackupReminderPrompt();
+  }
+
+  private setupBackupReminderPrompt(): void {
+    this.authService.currentUser$
+      .pipe(
+        filter((user) => user !== undefined && user !== null),
+        take(1)
+      )
+      .subscribe(() => {
+        setTimeout(() => void this.maybeShowBackupReminder(), 1500);
+      });
+  }
+
+  private async maybeShowBackupReminder(): Promise<void> {
+    const url = this.router.url.split('?')[0];
+    if (url === '/backup' || url === '/login' || url === '/register') {
+      return;
+    }
+
+    if (!this.backupReminderService.shouldShowReminder()) {
+      return;
+    }
+
+    this.backupReminderService.markPromptShownToday();
+
+    const message =
+      `${this.backupReminderService.getStatusMessage()}\n\n` +
+      'Open the Backup page to download a fresh copy now?';
+
+    const openBackup = await this.dialogService.confirm(message, 'Monthly backup reminder');
+    if (openBackup) {
+      await this.router.navigate(['/backup']);
+      return;
+    }
+
+    this.backupReminderService.snooze();
   }
 
   ngOnDestroy() {

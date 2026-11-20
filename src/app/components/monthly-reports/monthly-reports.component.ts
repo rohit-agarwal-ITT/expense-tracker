@@ -15,6 +15,8 @@ import { Subscription, combineLatest } from 'rxjs';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
 import { deferHeavyWork } from '../../core/utils/defer-heavy-work.util';
+import { FilterStateService, FilterState } from '../../core/services/filter-state.service';
+import { buildFilterStateFromReports } from '../../core/utils/shared-filter-sync.util';
 
 interface YearReportGroup {
   year: number;
@@ -76,9 +78,11 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
   analyticsPeriod = '';
   totalExpenseCount = 0;
   yearReportGroups: YearReportGroup[] = [];
+  yearChipTotals: Record<string, number> = { all: 0 };
 
   private subscription: Subscription = new Subscription();
   private categoryMap: Map<string, Category> = new Map();
+  private syncingSharedFilters = false;
 
   constructor(
     private expenseService: ExpenseService,
@@ -86,11 +90,22 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     private firebaseService: FirebaseService,
     private dialogService: DialogService,
     private scrollService: ScrollService,
+    private filterStateService: FilterStateService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     this.isLoading = !this.firebaseService.hasCoreDataCached;
+    this.applySharedFilterState(this.filterStateService.getFilterState(), false);
+
+    this.subscription.add(
+      this.filterStateService.filterState$.subscribe((state) => {
+        if (this.syncingSharedFilters) {
+          return;
+        }
+        this.applySharedFilterState(state, true);
+      })
+    );
 
     // Subscribe to Firebase observables for real-time updates using combineLatest for efficiency
     this.subscription.add(
@@ -178,10 +193,14 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     
     this.totalSpent = filteredReports.reduce((sum, report) => sum + report.totalAmount, 0);
     this.averageMonthlySpend = filteredReports.length > 0 ? this.totalSpent / filteredReports.length : 0;
-    
-    // Find highest spending month
-    this.highestSpendingMonth = filteredReports.reduce((max, report) => 
-      report.totalAmount > max.totalAmount ? report : max, filteredReports[0]);
+
+    this.highestSpendingMonth =
+      filteredReports.length > 0
+        ? filteredReports.reduce(
+            (max, report) => (report.totalAmount > max.totalAmount ? report : max),
+            filteredReports[0]
+          )
+        : null;
     
     // Calculate spending trend
     if (filteredReports.length >= 2) {
@@ -208,12 +227,94 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     this.analyticsPeriod = this.getAnalyticsPeriod();
     this.totalExpenseCount = this.getTotalExpenses();
     this.yearReportGroups = this.buildYearReportGroups();
+    this.refreshYearChipTotals();
+  }
+
+  getYearChipTotal(year: string): number {
+    const key = year || 'all';
+    return this.yearChipTotals[key] ?? 0;
+  }
+
+  getSelectedYearScopeLabel(): string {
+    return this.filterYear ? this.filterYear : 'All years';
+  }
+
+  getSelectedYearScopeTotal(): number {
+    return this.getYearChipTotal(this.filterYear);
+  }
+
+  getSelectedYearScopeStats(): { monthCount: number; expenseCount: number } {
+    const reports = this.getFilteredReports();
+    return {
+      monthCount: reports.length,
+      expenseCount: reports.reduce((sum, report) => sum + report.expenseCount, 0)
+    };
+  }
+
+  getSelectedYearTotalLabel(): string {
+    return this.filterYear ? 'Year total' : 'Total spent';
+  }
+
+  private refreshYearChipTotals(): void {
+    this.yearChipTotals = { all: this.sumReportsForYearChip('') };
+    for (const year of this.getAvailableYears()) {
+      this.yearChipTotals[year] = this.sumReportsForYearChip(year);
+    }
+  }
+
+  /**
+   * Year chip totals are always full calendar-year sums (not narrowed by the active year chip /
+   * shared date range), so every chip shows the correct amount before you click it.
+   */
+  private sumReportsForYearChip(year: string): number {
+    let reports = [...this.monthlyReports];
+
+    if (this.filterMonth) {
+      reports = reports.filter((report) => report.month.toString() === this.filterMonth);
+    }
+
+    if (year) {
+      reports = reports.filter((report) => report.year.toString() === year);
+    }
+
+    const sharedCategoryIds = this.filterStateService.getSelectedCategoryIds();
+    const categoryIds =
+      sharedCategoryIds.length > 0
+        ? sharedCategoryIds
+        : this.filterCategory
+          ? [this.filterCategory]
+          : [];
+
+    if (categoryIds.length > 0) {
+      return reports.reduce((sum, report) => {
+        const categorySum = report.categoryBreakdown
+          .filter((breakdown: any) => categoryIds.includes(breakdown.category.id))
+          .reduce((part: number, breakdown: any) => part + breakdown.amount, 0);
+        return sum + categorySum;
+      }, 0);
+    }
+
+    return reports.reduce((sum, report) => sum + report.totalAmount, 0);
   }
 
   private buildYearReportGroups(): YearReportGroup[] {
+    const reports = this.getFilteredReports();
+
+    if (!this.filterYear) {
+      return [
+        {
+          year: 0,
+          reports,
+          totalAmount: reports.reduce((sum, report) => sum + report.totalAmount, 0),
+          expenseCount: reports.reduce((sum, report) => sum + report.expenseCount, 0),
+          monthCount: reports.length
+        }
+      ];
+    }
+
     const grouped = new Map<number, any[]>();
 
-    for (const report of this.getFilteredReports()) {
+    for (const report of reports) {
       const existing = grouped.get(report.year) ?? [];
       existing.push(report);
       grouped.set(report.year, existing);
@@ -221,18 +322,45 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
 
     return [...grouped.entries()]
       .sort(([yearA], [yearB]) => yearB - yearA)
-      .map(([year, reports]) => ({
+      .map(([year, groupReports]) => ({
         year,
-        reports,
-        totalAmount: reports.reduce((sum, report) => sum + report.totalAmount, 0),
-        expenseCount: reports.reduce((sum, report) => sum + report.expenseCount, 0),
-        monthCount: reports.length
+        reports: groupReports,
+        totalAmount: groupReports.reduce((sum, report) => sum + report.totalAmount, 0),
+        expenseCount: groupReports.reduce((sum, report) => sum + report.expenseCount, 0),
+        monthCount: groupReports.length
       }));
   }
 
   selectYearFilter(year: string): void {
     this.filterYear = year;
     this.onFilterChange();
+  }
+
+  private applySharedFilterState(state: FilterState, recalculate: boolean): void {
+    this.filterYear = state.filterYear ?? '';
+    this.filterMonth = state.filterMonth ?? '';
+    this.filterCategory = state.filterCategory ?? '';
+    if (!this.filterCategory && state.selectedCategoryIds?.length === 1) {
+      this.filterCategory = state.selectedCategoryIds[0];
+    }
+    if (recalculate) {
+      this.calculateAnalytics();
+      this.cdr.markForCheck();
+    }
+  }
+
+  private persistSharedFilters(): void {
+    this.syncingSharedFilters = true;
+    this.filterStateService.updateFilterState(
+      buildFilterStateFromReports({
+        filterYear: this.filterYear,
+        filterMonth: this.filterMonth,
+        filterCategory: this.filterCategory
+      })
+    );
+    queueMicrotask(() => {
+      this.syncingSharedFilters = false;
+    });
   }
 
   showYearNavigation(): boolean {
@@ -304,16 +432,22 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     return this.expenses.length;
   }
 
-  getTopCategory(): any {
+  getTopCategory(): Category | undefined {
     const categoryTotals: { [key: string]: number } = {};
-    
+
     this.expenses.forEach(expense => {
       categoryTotals[expense.categoryId] = (categoryTotals[expense.categoryId] || 0) + expense.amount;
     });
-    
-    const topCategoryId = Object.keys(categoryTotals).reduce((a, b) => 
-      categoryTotals[a] > categoryTotals[b] ? a : b);
-    
+
+    const categoryIds = Object.keys(categoryTotals);
+    if (categoryIds.length === 0) {
+      return undefined;
+    }
+
+    const topCategoryId = categoryIds.reduce((a, b) =>
+      categoryTotals[a] > categoryTotals[b] ? a : b
+    );
+
     return this.categories.find(cat => cat.id === topCategoryId);
   }
 
@@ -847,8 +981,8 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
 
   getFilteredReports(): any[] {
     let filtered = [...this.monthlyReports];
-    
-    // Filter by year
+
+    // Month tiles: year chips + Smart Filters (not global date range — that hid months when "All" was selected)
     if (this.filterYear) {
       filtered = filtered.filter(report => report.year.toString() === this.filterYear);
     }
@@ -858,14 +992,21 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
       filtered = filtered.filter(report => report.month.toString() === this.filterMonth);
     }
     
-    // Filter by category
-    if (this.filterCategory) {
-      filtered = filtered.filter(report => 
-        report.categoryBreakdown.some((breakdown: any) => 
-          breakdown.category.id === this.filterCategory
-        )
-      );
-    }
+    const sharedCategoryIds = this.filterStateService.getSelectedCategoryIds();
+  const categoryIds =
+    sharedCategoryIds.length > 0
+      ? sharedCategoryIds
+      : this.filterCategory
+        ? [this.filterCategory]
+        : [];
+
+  if (categoryIds.length > 0) {
+    filtered = filtered.filter((report) =>
+      report.categoryBreakdown.some((breakdown: any) =>
+        categoryIds.includes(breakdown.category.id)
+      )
+    );
+  }
     
     // Sort
     filtered.sort((a, b) => {
@@ -919,7 +1060,21 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     this.filterCategory = '';
     this.sortBy = 'month';
     this.sortOrder = 'desc';
-    this.calculateAnalytics(); // Recalculate analytics when filters are cleared
+    this.syncingSharedFilters = true;
+    this.filterStateService.updateFilterState({
+      selectedPeriod: 'all',
+      customStartDate: '',
+      customEndDate: '',
+      selectedDatePreset: 'all',
+      selectedCategoryIds: [],
+      filterCategory: '',
+      filterYear: '',
+      filterMonth: ''
+    });
+    queueMicrotask(() => {
+      this.syncingSharedFilters = false;
+    });
+    this.calculateAnalytics();
   }
 
   // Method to recalculate analytics when filters change
@@ -937,6 +1092,7 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
         }
       }
     }
+    this.persistSharedFilters();
     this.calculateAnalytics();
   }
 

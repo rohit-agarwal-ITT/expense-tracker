@@ -19,6 +19,12 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
 import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { deferHeavyWork } from '../../core/utils/defer-heavy-work.util';
+import { FilterStateService, FilterState } from '../../core/services/filter-state.service';
+import {
+  inferDatePresetFromState,
+  resolveDateRangeFromFilterState
+} from '../../core/utils/filter-date-range.util';
+import { buildFilterStateFromAnalysis } from '../../core/utils/shared-filter-sync.util';
 
 interface CategoryAnalysis {
   category: Category;
@@ -98,7 +104,8 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
   private filterChangeSubscription: any;
   private dataSubscription: Subscription = new Subscription();
   private dataLoaded = false;
-  
+  private syncingSharedFilters = false;
+
   constructor(
     private expenseService: ExpenseService,
     private categoryService: CategoryService,
@@ -106,6 +113,7 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
     private dialogService: DialogService,
     private chartService: ChartService,
     private chartConfigService: ChartConfigService,
+    private filterStateService: FilterStateService,
     private cdr: ChangeDetectorRef
   ) {
     // Debounce filter changes to avoid excessive recalculations
@@ -118,7 +126,16 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.isLoading = !this.firebaseService.hasCoreDataCached;
-    // Use Firebase observables for faster loading and real-time updates
+
+    this.dataSubscription.add(
+      this.filterStateService.filterState$.subscribe((state) => {
+        if (this.syncingSharedFilters || !this.dataLoaded) {
+          return;
+        }
+        this.applySharedFilterState(state, true);
+      })
+    );
+
     this.loadDataFromObservables();
   }
 
@@ -233,12 +250,55 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
   }
 
   initializeFilters() {
-    // Apply default date range preset ("This Month")
-    this.applyDatePreset('thisMonth');
+    const state = this.filterStateService.getFilterState();
+    const hasSharedFilters =
+      state.selectedPeriod !== 'all' ||
+      !!state.customStartDate ||
+      !!state.customEndDate ||
+      (state.selectedCategoryIds?.length ?? 0) > 0;
 
-    // Initialize categories - only show categories that have expenses
+    if (hasSharedFilters) {
+      this.applySharedFilterState(state, false);
+    } else {
+      this.applyDatePreset('thisMonth');
+      return;
+    }
+
     this.updateAvailableCategories();
     this.updateUsedCategories();
+  }
+
+  private applySharedFilterState(state: FilterState, refresh: boolean): void {
+    const range = resolveDateRangeFromFilterState(state);
+    this.selectedStartDate = range.startDate;
+    this.selectedEndDate = range.endDate;
+    this.selectedDatePreset = inferDatePresetFromState(state);
+    this.selectedCategories = [...(state.selectedCategoryIds ?? [])];
+
+    if (refresh) {
+      this.invalidateCache();
+      this.updateUsedCategories();
+      this.performAnalysis();
+      if (this.showCharts) {
+        this.generateChartData();
+      }
+      this.cdr.markForCheck();
+    }
+  }
+
+  private persistSharedFilters(): void {
+    this.syncingSharedFilters = true;
+    this.filterStateService.updateFilterState(
+      buildFilterStateFromAnalysis({
+        startDate: this.selectedStartDate,
+        endDate: this.selectedEndDate,
+        datePreset: this.selectedDatePreset,
+        categoryIds: this.selectedCategories
+      })
+    );
+    queueMicrotask(() => {
+      this.syncingSharedFilters = false;
+    });
   }
 
   getFilteredExpenses(): Expense[] {
@@ -424,19 +484,19 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
   }
 
   onFilterChange() {
-    // Invalidate cache when filters change
+    this.selectedDatePreset = 'custom';
     this.invalidateCache();
-    // Use debounced version for better performance
     this.filterChangeSubject.next();
   }
   
   private onFilterChangeDebounced() {
+    this.persistSharedFilters();
     this.updateUsedCategories();
     this.performAnalysis();
     if (this.showCharts) {
       this.generateChartData();
     }
-    this.cdr.markForCheck(); // Trigger change detection for OnPush
+    this.cdr.markForCheck();
   }
 
   // Helper method to format dates for input fields (timezone-safe)
@@ -494,14 +554,13 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
         break;
     }
     
-    // Apply immediately for date presets (no debounce)
+    this.persistSharedFilters();
     this.invalidateCache();
     this.updateUsedCategories();
     this.performAnalysis();
     if (this.showCharts) {
       this.generateChartData();
     }
-    // Trigger change detection for OnPush strategy
     this.cdr.markForCheck();
   }
 
@@ -514,8 +573,12 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
     this.comparisonMode = false;
     this.selectedCategoriesForComparison = [];
     
-    // Reset to "This Month" filter (default)
+    this.syncingSharedFilters = true;
+    this.filterStateService.clearFilterState();
     this.applyDatePreset('thisMonth');
+    queueMicrotask(() => {
+      this.syncingSharedFilters = false;
+    });
   }
 
   // Clear search text

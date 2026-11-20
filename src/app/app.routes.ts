@@ -62,6 +62,11 @@ export const routes: Routes = [
     loadComponent: () => import('./components/trading/trading.component').then(m => m.TradingComponent), 
     canActivate: [AuthGuard] 
   },
+  {
+    path: 'backup',
+    loadComponent: () => import('./components/data-backup/data-backup.component').then(m => m.DataBackupComponent),
+    canActivate: [AuthGuard]
+  },
   
   // Wildcard route for 404
   { path: '**', redirectTo: '/dashboard' }

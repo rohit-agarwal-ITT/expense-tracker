@@ -56,6 +56,10 @@
                   <span class="nav-icon">💹</span>
                   <span class="nav-text">Trading</span>
                 </a>
+                <a class="nav-link" routerLink="/backup" routerLinkActive="active" (click)="onNavClick()">
+                  <span class="nav-icon">💾</span>
+                  <span class="nav-text">Backup</span>
+                </a>
               </nav>
               <div class="user-section" *ngIf="currentUser$ | async as user">
                 <div class="user-info">
@@ -104,6 +108,10 @@
       <a class="sidebar-link" routerLink="/trading" routerLinkActive="active" (click)="onNavClick()">
         <span class="link-icon">💹</span>
         <span class="link-text">Trading</span>
+      </a>
+      <a class="sidebar-link" routerLink="/backup" routerLinkActive="active" (click)="onNavClick()">
+        <span class="link-icon">💾</span>
+        <span class="link-text">Backup</span>
       </a>
     </nav>
   </aside>

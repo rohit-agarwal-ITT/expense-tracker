@@ -11,6 +11,9 @@ import { Subscription, combineLatest } from 'rxjs';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
 import { deferHeavyWork } from '../../core/utils/defer-heavy-work.util';
+import { resolveDateRangeFromFilterState } from '../../core/utils/filter-date-range.util';
+import { FilterState } from '../../core/services/filter-state.service';
+import { BackupRestoreService } from '../../core/services/backup-restore.service';
 
 interface Alert {
   type: 'success' | 'error' | 'warning' | 'info';
@@ -64,7 +67,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   customEndDate: string = '';
   selectedMonthOnly: string = '';
   selectedYearOnly: string = '';
-  
+  selectedCategoryId = '';
+
   // Monthly data
   currentMonthTotal: number = 0;
   
@@ -91,20 +95,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
   
   private subscription: Subscription = new Subscription();
   private categoryMap: Map<string, Category> = new Map();
+  private selectedCategoryIds: string[] = [];
+  private syncingSharedFilters = false;
   private calculationCache: { expenses: Expense[], categories: Category[] } | null = null;
 
   constructor(
     private firebaseService: FirebaseService,
     private filterStateService: FilterStateService,
+    private backupRestoreService: BackupRestoreService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     this.isLoading = !this.firebaseService.hasCoreDataCached;
 
-    // Load filter state from service
     this.loadFilterState();
-    
+
+    this.subscription.add(
+      this.filterStateService.filterState$.subscribe((state) => {
+        if (this.syncingSharedFilters) {
+          return;
+        }
+        this.applySharedFilterState(state);
+      })
+    );
+
     // Initialize available years
     const currentYear = new Date().getFullYear();
     for (let year = 2020; year <= currentYear + 1; year++) {
@@ -246,7 +261,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
           break;
       }
     }
-    
+
+  const categoryIds = this.selectedCategoryIds;
+    if (categoryIds.length > 0) {
+      filtered = filtered.filter((expense) => categoryIds.includes(expense.categoryId));
+    }
+
     return filtered;
   }
 
@@ -297,7 +317,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.customEndDate = filterState.customEndDate;
     this.selectedMonthOnly = filterState.selectedMonthOnly || '';
     this.selectedYearOnly = filterState.selectedYearOnly || '';
-    
+    this.selectedCategoryIds = [...(filterState.selectedCategoryIds ?? [])];
+    if (!this.selectedCategoryIds.length && filterState.filterCategory) {
+      this.selectedCategoryIds = [filterState.filterCategory];
+    }
+    this.selectedCategoryId =
+      this.selectedCategoryIds.length === 1 ? this.selectedCategoryIds[0] : '';
+
     // Auto-select current month and year if "This Month" is selected but no month/year is set
     if (this.selectedPeriod === 'monthly' && (!this.selectedMonth || !this.selectedYear)) {
       const now = new Date();
@@ -334,16 +360,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.onMonthOnlyChange();
     }
     
-    // Save filter state to service
-    this.filterStateService.updateFilterState({
-      selectedPeriod: this.selectedPeriod,
-      selectedMonth: this.selectedMonth,
-      selectedYear: this.selectedYear,
-      customStartDate: this.customStartDate,
-      customEndDate: this.customEndDate,
-      selectedMonthOnly: this.selectedMonthOnly,
-      selectedYearOnly: this.selectedYearOnly
-    });
+    this.persistSharedFilters();
 
     this.refreshQuickSummaryCards();
     this.refreshInsightsCache();
@@ -353,6 +370,81 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private refreshInsightsCache(): void {
     this.spendingAnalytics = this.getSpendingAnalytics();
     this.smartRecommendations = this.getSmartRecommendations();
+  }
+
+  onCategoryFilterChange(): void {
+    this.selectedCategoryIds = this.selectedCategoryId ? [this.selectedCategoryId] : [];
+    this.onFilterChange();
+  }
+
+  private applySharedFilterState(state: FilterState): void {
+    this.selectedPeriod = state.selectedPeriod;
+    this.selectedMonth = state.selectedMonth;
+    this.selectedYear = state.selectedYear;
+    this.customStartDate = state.customStartDate;
+    this.customEndDate = state.customEndDate;
+    this.selectedMonthOnly = state.selectedMonthOnly || '';
+    this.selectedYearOnly = state.selectedYearOnly || '';
+    this.selectedCategoryIds = [...(state.selectedCategoryIds ?? [])];
+    if (!this.selectedCategoryIds.length && state.filterCategory) {
+      this.selectedCategoryIds = [state.filterCategory];
+    }
+    this.selectedCategoryId =
+      this.selectedCategoryIds.length === 1 ? this.selectedCategoryIds[0] : '';
+    this.refreshQuickSummaryCards();
+    this.refreshInsightsCache();
+    this.cdr.markForCheck();
+  }
+
+  private persistSharedFilters(): void {
+    const range = resolveDateRangeFromFilterState({
+      selectedPeriod: this.selectedPeriod,
+      selectedMonth: this.selectedMonth,
+      selectedYear: this.selectedYear,
+      customStartDate: this.customStartDate,
+      customEndDate: this.customEndDate,
+      selectedMonthOnly: this.selectedMonthOnly,
+      selectedYearOnly: this.selectedYearOnly
+    });
+
+    this.syncingSharedFilters = true;
+    this.filterStateService.updateFilterState({
+      selectedPeriod: this.selectedPeriod,
+      selectedMonth: this.selectedMonth,
+      selectedYear: this.selectedYear,
+      customStartDate:
+        this.selectedPeriod === 'custom' ? this.customStartDate : range.startDate,
+      customEndDate:
+        this.selectedPeriod === 'custom' ? this.customEndDate : range.endDate,
+      selectedMonthOnly: this.selectedMonthOnly,
+      selectedYearOnly: this.selectedYearOnly,
+      selectedCategoryIds: [...this.selectedCategoryIds],
+      filterCategory:
+        this.selectedCategoryIds.length === 1 ? this.selectedCategoryIds[0] : '',
+      selectedDatePreset: this.mapPeriodToDatePreset(),
+      filterYear: '',
+      filterMonth: ''
+    });
+    queueMicrotask(() => {
+      this.syncingSharedFilters = false;
+    });
+  }
+
+  private mapPeriodToDatePreset(): string {
+    switch (this.selectedPeriod) {
+      case 'all':
+        return 'all';
+      case 'monthly':
+        return 'thisMonth';
+      case 'yearly':
+        return 'thisYear';
+      case 'last30':
+        return 'last30';
+      case 'last7':
+        return 'last7';
+      default:
+        return 'custom';
+    }
   }
 
   // Custom date range methods
@@ -925,22 +1017,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return { trend: 'stable', percentage };
   }
 
-  // Export data functionality
   exportData(): void {
-    const data = {
-      expenses: this.expenses,
-      categories: this.categories,
-      analytics: this.getSpendingAnalytics(),
-      exportDate: new Date().toISOString()
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `expense-tracker-data-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    void this.backupRestoreService.exportAndDownload({
+      includeTrades: true,
+      includeUserSettings: true
+    });
   }
 
   // Smart Recommendations

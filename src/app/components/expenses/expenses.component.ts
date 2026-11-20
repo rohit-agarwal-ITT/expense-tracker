@@ -1654,59 +1654,46 @@ export class ExpensesComponent implements OnInit, OnDestroy {
 
     try {
       this.isBulkDeleting = true;
+      this.cdr.markForCheck();
+
       const expenseIds = Array.from(this.selectedExpenseIds);
-      let successCount = 0;
-      let failCount = 0;
 
       for (const expenseId of expenseIds) {
-        try {
-          const expense = this.expenses.find(e => e.id === expenseId);
-          if (expense) {
-            // Store expense for undo
-            this.deletedExpensesData.set(expense.id, { ...expense });
-            this.actionHistoryService.addAction('delete', expense);
-            
-            // Mark expense as deleted (show undo on tile)
-            this.deletedExpenseIds.add(expense.id);
-            
-            // Set timeout to finalize delete after 5 seconds
-            const timeout = setTimeout(async () => {
-              await this.finalizeDelete(expense.id);
-            }, 5000);
-            this.expenseUndoTimeouts.set(expense.id, timeout);
-          }
-          
-          await this.expenseService.delete(expenseId);
-          successCount++;
-        } catch (error) {
-          console.error(`Error deleting expense ${expenseId}:`, error);
-          // Clean up if deletion failed
-          this.deletedExpenseIds.delete(expenseId);
-          this.deletedExpensesData.delete(expenseId);
-          if (this.expenseUndoTimeouts.has(expenseId)) {
-            clearTimeout(this.expenseUndoTimeouts.get(expenseId));
-            this.expenseUndoTimeouts.delete(expenseId);
-          }
-          failCount++;
+        const expense = this.expenses.find((e) => e.id === expenseId);
+        if (!expense) {
+          continue;
         }
+        this.deletedExpensesData.set(expense.id, { ...expense });
+        this.actionHistoryService.addAction('delete', expense);
+        this.deletedExpenseIds.add(expense.id);
+        const timeout = setTimeout(() => {
+          void this.finalizeDelete(expense.id);
+        }, 5000);
+        this.expenseUndoTimeouts.set(expense.id, timeout);
       }
 
       this.selectedExpenseIds.clear();
-      
-      // Trigger change detection for OnPush to show undo buttons immediately
       this.cdr.markForCheck();
-      
-      if (failCount === 0) {
-        // Don't show success message for bulk delete - let users see undo buttons
-        // await this.dialogService.success(`Successfully deleted ${successCount} expense(s)!`);
-      } else {
-        await this.dialogService.warning(`Deleted ${successCount} expense(s), but ${failCount} failed.`);
+
+      try {
+        await this.expenseService.deleteMany(expenseIds);
+      } catch (error) {
+        console.error('Batch delete failed:', error);
+        for (const expenseId of expenseIds) {
+          this.deletedExpenseIds.delete(expenseId);
+          this.deletedExpensesData.delete(expenseId);
+          const pendingTimeout = this.expenseUndoTimeouts.get(expenseId);
+          if (pendingTimeout) {
+            clearTimeout(pendingTimeout);
+            this.expenseUndoTimeouts.delete(expenseId);
+          }
+        }
+        this.cdr.markForCheck();
+        await this.dialogService.error('Error deleting expenses. Please try again.');
+        return;
       }
 
-      // Exit bulk mode if all selected expenses are deleted
-      if (this.selectedExpenseIds.size === 0) {
-        this.bulkSelectionMode = false;
-      }
+      this.bulkSelectionMode = false;
     } catch (error) {
       console.error('Error in bulk delete:', error);
       await this.dialogService.error('Error deleting expenses. Please try again.');

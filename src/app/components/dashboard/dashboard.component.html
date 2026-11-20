@@ -9,7 +9,11 @@
       </button>
       <button class="action-btn secondary" (click)="exportData()">
         <span class="action-icon">📥</span>
-        <span class="action-text">Export Data</span>
+        <span class="action-text">Download backup</span>
+      </button>
+      <button class="action-btn secondary" routerLink="/backup">
+        <span class="action-icon">💾</span>
+        <span class="action-text">Backup &amp; restore</span>
       </button>
       <button class="action-btn secondary" (click)="toggleInsights()">
         <span class="action-icon">{{ showInsights ? '📊' : '🔍' }}</span>
@@ -115,6 +119,21 @@
         <span class="range-dates">{{ customStartDate }} to {{ customEndDate }}</span>
       </div>
     </div>
+  </div>
+
+  <div class="category-filter-bar" *ngIf="categories.length > 0">
+    <label class="category-filter-label" for="dashboardCategoryFilter">Category</label>
+    <select
+      id="dashboardCategoryFilter"
+      class="category-filter-select"
+      [(ngModel)]="selectedCategoryId"
+      (change)="onCategoryFilterChange()">
+      <option value="">All categories</option>
+      <option *ngFor="let category of categories" [value]="category.id">
+        {{ category.icon }} {{ category.name }}
+      </option>
+    </select>
+    <span class="category-filter-hint">Synced with Reports &amp; Analysis</span>
   </div>
 
   <!-- Quick Summary Cards -->

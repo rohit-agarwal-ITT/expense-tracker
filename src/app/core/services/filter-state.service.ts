@@ -9,30 +9,43 @@ export interface FilterState {
   customEndDate: string;
   selectedMonthOnly?: string;
   selectedYearOnly?: string;
+  /** Analysis date preset id (thisMonth, thisYear, custom, …) */
+  selectedDatePreset?: string;
+  /** Shared multi-category filter (empty = all) */
+  selectedCategoryIds?: string[];
+  /** Reports single category mirror */
   filterCategory?: string;
-  filterType?: string;
+  filterYear?: string;
+  filterMonth?: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class FilterStateService {
-  private filterStateSubject = new BehaviorSubject<FilterState>({
+  private readonly defaultState: FilterState = {
     selectedPeriod: 'all',
     selectedMonth: new Date().getMonth().toString(),
     selectedYear: new Date().getFullYear().toString(),
     customStartDate: '',
-    customEndDate: ''
-  });
+    customEndDate: '',
+    selectedMonthOnly: '',
+    selectedYearOnly: '',
+    selectedDatePreset: 'thisMonth',
+    selectedCategoryIds: [],
+    filterCategory: '',
+    filterYear: '',
+    filterMonth: ''
+  };
+
+  private filterStateSubject = new BehaviorSubject<FilterState>(this.defaultState);
 
   public filterState$ = this.filterStateSubject.asObservable();
 
   constructor() {
-    // Load filter state from localStorage on service initialization
     this.loadFilterState();
   }
 
-  // Update filter state
   updateFilterState(newState: Partial<FilterState>): void {
     const currentState = this.filterStateSubject.value;
     const updatedState = { ...currentState, ...newState };
@@ -40,26 +53,19 @@ export class FilterStateService {
     this.saveFilterState(updatedState);
   }
 
-  // Get current filter state
   getFilterState(): FilterState {
-    const state = this.filterStateSubject.value;
-    return state;
+    return this.filterStateSubject.value;
   }
 
-  // Clear filter state
   clearFilterState(): void {
-    const defaultState: FilterState = {
-      selectedPeriod: 'all',
-      selectedMonth: new Date().getMonth().toString(),
-      selectedYear: new Date().getFullYear().toString(),
-      customStartDate: '',
-      customEndDate: ''
-    };
-    this.filterStateSubject.next(defaultState);
-    this.saveFilterState(defaultState);
+    this.filterStateSubject.next({ ...this.defaultState });
+    this.saveFilterState(this.defaultState);
   }
 
-  // Save filter state to localStorage
+  getSelectedCategoryIds(): string[] {
+    return [...(this.getFilterState().selectedCategoryIds ?? [])];
+  }
+
   private saveFilterState(state: FilterState): void {
     try {
       localStorage.setItem('expenseTracker_filterState', JSON.stringify(state));
@@ -68,12 +74,11 @@ export class FilterStateService {
     }
   }
 
-  // Load filter state from localStorage
   private loadFilterState(): void {
     try {
       const savedState = localStorage.getItem('expenseTracker_filterState');
       if (savedState) {
-        const state = JSON.parse(savedState);
+        const state = { ...this.defaultState, ...JSON.parse(savedState) };
         this.filterStateSubject.next(state);
       }
     } catch (error) {
@@ -81,15 +86,13 @@ export class FilterStateService {
     }
   }
 
-  // Check if custom date range is active
   isCustomDateRangeActive(): boolean {
     const state = this.getFilterState();
-    return state.selectedPeriod === 'custom' && 
-           !!state.customStartDate && 
-           !!state.customEndDate;
+    return state.selectedPeriod === 'custom' &&
+      !!state.customStartDate &&
+      !!state.customEndDate;
   }
 
-  // Get custom date range
   getCustomDateRange(): { startDate: string; endDate: string } | null {
     const state = this.getFilterState();
     if (this.isCustomDateRangeActive()) {
@@ -101,7 +104,6 @@ export class FilterStateService {
     return null;
   }
 
-  // Get current period filter
   getCurrentPeriodFilter(): string {
     return this.getFilterState().selectedPeriod;
   }

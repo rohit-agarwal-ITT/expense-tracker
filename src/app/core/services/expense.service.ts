@@ -43,15 +43,16 @@ export class ExpenseService {
   async deleteByCategoryId(categoryId: string): Promise<void> {
     try {
       const expenses = await this.firebaseService.loadExpenses();
-      const expensesToDelete = expenses.filter(e => e.categoryId === categoryId);
-      
-      for (const expense of expensesToDelete) {
-        await this.firebaseService.deleteExpense(expense.id);
-      }
+      const ids = expenses.filter((e) => e.categoryId === categoryId).map((e) => e.id);
+      await this.firebaseService.deleteExpensesByIds(ids);
     } catch (error) {
       console.error('Error deleting expenses by category:', error);
       throw error;
     }
+  }
+
+  async deleteMany(ids: string[]): Promise<number> {
+    return this.firebaseService.deleteExpensesByIds(ids);
   }
 
   async getById(id: string): Promise<Expense | undefined> {

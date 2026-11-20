@@ -1,13 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  setDoc,
-  where,
-  writeBatch
-} from 'firebase/firestore';
+import { doc, getDoc, writeBatch } from 'firebase/firestore';
 import { Firestore } from '@angular/fire/firestore';
 import { firstValueFrom, take } from 'rxjs';
 import { AuthService } from './auth.service';
@@ -145,9 +137,9 @@ export class BackupRestoreService {
 
     if (mode === 'replace') {
       result.deletedBeforeImport = {
-        expenses: await this.deleteUserDocuments('expenses', userId),
-        categories: await this.deleteUserDocuments('categories', userId),
-        trades: await this.deleteUserDocuments('trades', userId)
+        expenses: await this.firebaseService.deleteCollectionForUser('expenses', userId),
+        categories: await this.firebaseService.deleteCollectionForUser('categories', userId),
+        trades: await this.firebaseService.deleteCollectionForUser('trades', userId)
       };
     }
 
@@ -189,20 +181,14 @@ export class BackupRestoreService {
     const resetSettings = options.resetSettings !== false;
 
     const [expensesDeleted, categoriesDeleted, tradesDeleted] = await Promise.all([
-      this.deleteUserDocuments('expenses', userId),
-      this.deleteUserDocuments('categories', userId),
-      this.deleteUserDocuments('trades', userId)
+      this.firebaseService.deleteCollectionForUser('expenses', userId),
+      this.firebaseService.deleteCollectionForUser('categories', userId),
+      this.firebaseService.deleteCollectionForUser('trades', userId)
     ]);
 
     let settingsReset = false;
     if (resetSettings) {
-      await this.firebaseService.saveUserSettings({
-        budgetLimit: 0,
-        emergencyFund: 0,
-        vacationFund: 0,
-        theme: 'light',
-        currency: '₹'
-      });
+      await this.firebaseService.resetUserSettingsForCurrentUser();
       settingsReset = true;
     }
 
@@ -303,21 +289,6 @@ export class BackupRestoreService {
       .map((t) => ({ ...t }));
   }
 
-  private async deleteUserDocuments(collectionName: string, userId: string): Promise<number> {
-    const ref = collection(this.firestore, collectionName);
-    const q = query(ref, where('userId', '==', userId));
-    const snapshot = await getDocs(q);
-    const docs = snapshot.docs;
-
-    for (let i = 0; i < docs.length; i += BATCH_SIZE) {
-      const batch = writeBatch(this.firestore);
-      docs.slice(i, i + BATCH_SIZE).forEach((snap) => batch.delete(snap.ref));
-      await batch.commit();
-    }
-
-    return docs.length;
-  }
-
   private async writeDocuments<T extends { id: string }>(
     collectionName: string,
     items: T[],
@@ -327,9 +298,12 @@ export class BackupRestoreService {
       return 0;
     }
 
+    let written = 0;
+
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
       const batch = writeBatch(this.firestore);
       const chunk = items.slice(i, i + BATCH_SIZE);
+      let batchCount = 0;
 
       for (const item of chunk) {
         const { id, ...rest } = item;
@@ -337,12 +311,26 @@ export class BackupRestoreService {
           continue;
         }
         const docRef = doc(this.firestore, collectionName, id);
-        batch.set(docRef, { ...rest, userId }, { merge: true });
+        const existing = await getDoc(docRef);
+        if (existing.exists()) {
+          const ownerId = existing.data()['userId'] as string | undefined;
+          if (ownerId !== userId) {
+            console.warn(
+              `Skipped restore ${collectionName}/${id}: belongs to another user`
+            );
+            continue;
+          }
+        }
+        batch.set(docRef, { ...rest, userId }, { merge: false });
+        batchCount++;
       }
 
-      await batch.commit();
+      if (batchCount > 0) {
+        await batch.commit();
+        written += batchCount;
+      }
     }
 
-    return items.length;
+    return written;
   }
 }

@@ -206,10 +206,12 @@ export class CategoryService {
       const expenses = await this.firebaseService.loadExpenses();
       const expensesToDelete = expenses.filter(e => e.categoryId === id);
       
-      for (const expense of expensesToDelete) {
-        await this.firebaseService.deleteExpense(expense.id);
+      if (expensesToDelete.length > 0) {
+        await this.firebaseService.deleteExpensesByIds(
+          expensesToDelete.map((expense) => expense.id)
+        );
       }
-      
+
       await this.firebaseService.deleteCategory(id);
     } catch (error) {
       console.error('Error deleting category:', error);

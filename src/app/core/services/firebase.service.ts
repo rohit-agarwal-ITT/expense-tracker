@@ -41,6 +41,7 @@ export class FirebaseService {
   private expensesUnsubscribe?: () => void;
   private categoriesUnsubscribe?: () => void;
   private tradesUnsubscribe?: () => void;
+  private activeDataUserId: string | null = null;
 
   public expenses$ = this.expensesSubject.asObservable();
   public categories$ = this.categoriesSubject.asObservable();
@@ -81,30 +82,28 @@ export class FirebaseService {
   }
 
   constructor(private authService: AuthService) {
-    // Subscribe to auth state changes to reload data when user changes
-    this.authService.currentUser$.subscribe(user => {
+    this.authService.currentUser$.subscribe((user) => {
       if (user) {
-        // Only load data if we don't have any data yet (first time login)
-        // Note: Trades are independent from expenses/categories and load separately
-        const hasData = this.expensesSubject.value.length > 0 || this.categoriesSubject.value.length > 0;
-        if (!hasData) {
-          this.loadData();
-        } else {
-          // If we have data, just set up real-time listeners
-          // This ensures trades are loaded even if expenses/categories already exist
-          this.setupRealTimeListeners();
-          // Also load trades to ensure they're available immediately
-          this.loadTrades();
+        const userChanged = this.activeDataUserId !== null && this.activeDataUserId !== user.uid;
+        if (userChanged) {
+          this.clearCachedUserData();
         }
-      } else {
-        // Clear data when user logs out
-        this.cleanupListeners();
-        this.expensesSubject.next([]);
-        this.categoriesSubject.next([]);
-        this.tradesSubject.next([]);
-        this.userSettingsSubject.next({});
+        this.activeDataUserId = user.uid;
+        void this.loadData();
+        return;
       }
+
+      this.activeDataUserId = null;
+      this.clearCachedUserData();
     });
+  }
+
+  private clearCachedUserData(): void {
+    this.cleanupListeners();
+    this.expensesSubject.next([]);
+    this.categoriesSubject.next([]);
+    this.tradesSubject.next([]);
+    this.userSettingsSubject.next({});
   }
 
   // Load all data from Firebase
@@ -333,13 +332,13 @@ export class FirebaseService {
       // Check if document exists first
       const docSnap = await getDoc(expenseRef);
       if (!docSnap.exists()) {
-        console.warn(`Document with ID ${expense.id} does not exist in Firebase. This might be a local-only expense.`);
-        // For updates, we'll create the document if it doesn't exist
         const { id, ...expenseData } = expense;
         const expenseWithUserId = { ...expenseData, userId };
-        await setDoc(expenseRef, expenseWithUserId);
+        await setDoc(expenseRef, expenseWithUserId, { merge: false });
+      } else if (!this.documentBelongsToUser(docSnap.data(), userId)) {
+        throw new Error('You do not have permission to update this expense.');
       } else {
-        const { id, ...expenseData } = expense; // Remove id from the update data
+        const { id, ...expenseData } = expense;
         const expenseWithUserId = { ...expenseData, userId };
         await updateDoc(expenseRef, expenseWithUserId);
       }
@@ -353,11 +352,66 @@ export class FirebaseService {
     }
   }
 
+  private documentBelongsToUser(data: DocumentData | undefined, userId: string): boolean {
+    return !!data && data['userId'] === userId;
+  }
+
+  private requireCurrentUserId(): string {
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return userId;
+  }
+
+  /**
+   * Deletes only documents that belong to the given user (batched).
+   */
+  async deleteCollectionForUser(collectionName: string, userId: string): Promise<number> {
+    const ref = collection(this.firestore, collectionName);
+    const q = query(ref, where('userId', '==', userId));
+    const snapshot = await getDocs(q);
+    let deleted = 0;
+
+    for (let i = 0; i < snapshot.docs.length; i += FIRESTORE_BATCH_LIMIT) {
+      const batch = writeBatch(this.firestore);
+      const chunk = snapshot.docs.slice(i, i + FIRESTORE_BATCH_LIMIT);
+      let batchCount = 0;
+
+      for (const snap of chunk) {
+        if (!this.documentBelongsToUser(snap.data(), userId)) {
+          console.warn(
+            `Skipped ${collectionName}/${snap.id}: userId mismatch (expected ${userId})`
+          );
+          continue;
+        }
+        batch.delete(snap.ref);
+        batchCount++;
+      }
+
+      if (batchCount > 0) {
+        await batch.commit();
+        deleted += batchCount;
+      }
+    }
+
+    return deleted;
+  }
+
   async deleteExpense(expenseId: string): Promise<void> {
     try {
+      const userId = this.requireCurrentUserId();
       const expenseRef = doc(this.firestore, 'expenses', expenseId);
-      
-      // Delete the document directly - Firebase handles non-existent documents gracefully
+      const docSnap = await getDoc(expenseRef);
+
+      if (!docSnap.exists()) {
+        return;
+      }
+
+      if (!this.documentBelongsToUser(docSnap.data(), userId)) {
+        throw new Error('You do not have permission to delete this expense.');
+      }
+
       await deleteDoc(expenseRef);
       
       // Real-time listener will automatically update the cache
@@ -380,6 +434,7 @@ export class FirebaseService {
       return 0;
     }
 
+    const userId = this.requireCurrentUserId();
     const uniqueIds = [...new Set(expenseIds.filter((id) => !!id))];
     let deleted = 0;
 
@@ -387,11 +442,26 @@ export class FirebaseService {
       for (let i = 0; i < uniqueIds.length; i += FIRESTORE_BATCH_LIMIT) {
         const batch = writeBatch(this.firestore);
         const chunk = uniqueIds.slice(i, i + FIRESTORE_BATCH_LIMIT);
+        let batchCount = 0;
+
         for (const id of chunk) {
-          batch.delete(doc(this.firestore, 'expenses', id));
+          const expenseRef = doc(this.firestore, 'expenses', id);
+          const docSnap = await getDoc(expenseRef);
+          if (!docSnap.exists()) {
+            continue;
+          }
+          if (!this.documentBelongsToUser(docSnap.data(), userId)) {
+            console.warn(`Skipped expense ${id}: not owned by current user`);
+            continue;
+          }
+          batch.delete(expenseRef);
+          batchCount++;
         }
-        await batch.commit();
-        deleted += chunk.length;
+
+        if (batchCount > 0) {
+          await batch.commit();
+          deleted += batchCount;
+        }
       }
       return deleted;
     } catch (error) {
@@ -483,13 +553,13 @@ export class FirebaseService {
       // Check if document exists first
       const docSnap = await getDoc(categoryRef);
       if (!docSnap.exists()) {
-        console.warn(`Category with ID ${category.id} does not exist in Firebase. This might be a local-only category.`);
-        // For icon updates, we'll create the document if it doesn't exist
         const { id, ...categoryData } = category;
         const categoryWithUserId = { ...categoryData, userId };
-        await setDoc(categoryRef, categoryWithUserId);
+        await setDoc(categoryRef, categoryWithUserId, { merge: false });
+      } else if (!this.documentBelongsToUser(docSnap.data(), userId)) {
+        throw new Error('You do not have permission to update this category.');
       } else {
-        const { id, ...categoryData } = category; // Remove id from the update data
+        const { id, ...categoryData } = category;
         const categoryWithUserId = { ...categoryData, userId };
         await updateDoc(categoryRef, categoryWithUserId);
       }
@@ -505,16 +575,18 @@ export class FirebaseService {
 
   async deleteCategory(categoryId: string): Promise<void> {
     try {
+      const userId = this.requireCurrentUserId();
       const categoryRef = doc(this.firestore, 'categories', categoryId);
-      
-      // Check if document exists first
       const docSnap = await getDoc(categoryRef);
-      
+
       if (!docSnap.exists()) {
-        // Don't throw error, just return
         return;
       }
-      
+
+      if (!this.documentBelongsToUser(docSnap.data(), userId)) {
+        throw new Error('You do not have permission to delete this category.');
+      }
+
       await deleteDoc(categoryRef);
       
       // Real-time listener will automatically update the cache
@@ -532,51 +604,70 @@ export class FirebaseService {
     }
   }
 
-  // User Settings Operations
+  // User Settings Operations (per-user document — legacy `default` is migrated once)
+  private getDefaultUserSettings(): Record<string, unknown> {
+    return {
+      budgetLimit: 0,
+      emergencyFund: 0,
+      vacationFund: 0,
+      theme: 'light',
+      currency: '₹'
+    };
+  }
+
+  private getUserSettingsDocRef(userId: string) {
+    return doc(this.firestore, 'userSettings', userId);
+  }
+
   async loadUserSettings(): Promise<any> {
     try {
-      const settingsRef = doc(this.firestore, 'userSettings', 'default');
-      const docSnap = await getDoc(settingsRef);
-      
-      if (docSnap.exists()) {
-        const settings = docSnap.data();
+      const userId = this.authService.getCurrentUserId();
+      if (!userId) {
+        return this.getDefaultUserSettings();
+      }
+
+      const userSettingsRef = this.getUserSettingsDocRef(userId);
+      const userSnap = await getDoc(userSettingsRef);
+
+      if (userSnap.exists()) {
+        const settings = userSnap.data();
         this.userSettingsSubject.next(settings);
         return settings;
-      } else {
-        // Create default settings using setDoc instead of updateDoc
-        const defaultSettings = {
-          budgetLimit: 0,
-          emergencyFund: 0,
-          vacationFund: 0,
-          theme: 'light',
-          currency: '₹'
-        };
-        await this.saveUserSettings(defaultSettings);
-        return defaultSettings;
       }
+
+      const legacyRef = doc(this.firestore, 'userSettings', 'default');
+      const legacySnap = await getDoc(legacyRef);
+      if (legacySnap.exists()) {
+        const legacy = legacySnap.data();
+        await setDoc(userSettingsRef, { ...legacy, migratedFromLegacyDefault: true }, { merge: true });
+        this.userSettingsSubject.next(legacy);
+        return legacy;
+      }
+
+      const defaultSettings = this.getDefaultUserSettings();
+      await this.saveUserSettings(defaultSettings);
+      return defaultSettings;
     } catch (error) {
       console.error('Error loading user settings:', error);
-      return {
-        budgetLimit: 0,
-        emergencyFund: 0,
-        vacationFund: 0,
-        theme: 'light',
-        currency: '₹'
-      };
+      return this.getDefaultUserSettings();
     }
   }
 
   async saveUserSettings(settings: any): Promise<void> {
     try {
-      const settingsRef = doc(this.firestore, 'userSettings', 'default');
-      // Use setDoc with merge option instead of updateDoc
-      await setDoc(settingsRef, settings, { merge: true });
-      
+      const userId = this.requireCurrentUserId();
+      const settingsRef = this.getUserSettingsDocRef(userId);
+      await setDoc(settingsRef, { ...settings, userId }, { merge: true });
+
       this.userSettingsSubject.next(settings);
     } catch (error) {
       console.error('Error saving user settings:', error);
       throw error;
     }
+  }
+
+  async resetUserSettingsForCurrentUser(): Promise<void> {
+    await this.saveUserSettings(this.getDefaultUserSettings());
   }
 
 
@@ -723,7 +814,9 @@ export class FirebaseService {
       if (!docSnap.exists()) {
         const { id, ...tradeData } = trade;
         const tradeWithUserId = { ...tradeData, userId };
-        await setDoc(tradeRef, tradeWithUserId);
+        await setDoc(tradeRef, tradeWithUserId, { merge: false });
+      } else if (!this.documentBelongsToUser(docSnap.data(), userId)) {
+        throw new Error('You do not have permission to update this trade.');
       } else {
         const { id, ...tradeData } = trade;
         const tradeWithUserId = { ...tradeData, userId };
@@ -737,7 +830,18 @@ export class FirebaseService {
 
   async deleteTrade(tradeId: string): Promise<void> {
     try {
+      const userId = this.requireCurrentUserId();
       const tradeRef = doc(this.firestore, 'trades', tradeId);
+      const docSnap = await getDoc(tradeRef);
+
+      if (!docSnap.exists()) {
+        return;
+      }
+
+      if (!this.documentBelongsToUser(docSnap.data(), userId)) {
+        throw new Error('You do not have permission to delete this trade.');
+      }
+
       await deleteDoc(tradeRef);
     } catch (error) {
       console.error('Error deleting trade:', error);

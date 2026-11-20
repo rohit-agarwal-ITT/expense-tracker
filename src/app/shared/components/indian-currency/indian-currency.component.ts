@@ -10,9 +10,9 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
+  formatIndianAbbreviated,
   formatIndianCurrency,
-  formatIndianLakhs,
-  shouldAbbreviateInLakhs
+  shouldAbbreviateIndianCurrency
 } from '../../../core/utils/currency-format.util';
 
 @Component({
@@ -90,7 +90,7 @@ export class IndianCurrencyComponent implements AfterViewInit, OnDestroy {
   }
 
   get canToggle(): boolean {
-    return this.abbreviate && shouldAbbreviateInLakhs(this.amount);
+    return this.abbreviate && shouldAbbreviateIndianCurrency(this.amount);
   }
 
   get tooltip(): string | null {
@@ -107,7 +107,7 @@ export class IndianCurrencyComponent implements AfterViewInit, OnDestroy {
     let text: string;
 
     if (this.canToggle && !this.showFullAmount) {
-      text = formatIndianLakhs(this.amount, 2);
+      text = formatIndianAbbreviated(this.amount, 2);
     } else {
       text = formatIndianCurrency(this.amount, this.maximumFractionDigits);
     }

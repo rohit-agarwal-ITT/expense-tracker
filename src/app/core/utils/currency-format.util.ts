@@ -1,5 +1,6 @@
-/** Abbreviate to lakhs (e.g. ₹1.19 L) at and above one lakh — matches Indian convention. */
+/** Indian short amounts: lakhs from ₹1L, crores from ₹1Cr. */
 const LAKH_THRESHOLD = 100_000;
+const CRORE_THRESHOLD = 10_000_000;
 
 export function formatIndianNumber(
   value: number,
@@ -22,12 +23,35 @@ export function formatIndianCurrency(
 
 export function formatIndianLakhs(value: number, decimalPlaces = 2): string {
   const sign = value < 0 ? '-' : '';
-  const lakhs = Math.abs(value) / 100000;
-  return `${sign}₹${lakhs.toFixed(decimalPlaces)} L`;
+  const lakhs = Math.abs(value) / LAKH_THRESHOLD;
+  return `${sign}₹${lakhs.toFixed(decimalPlaces)}L`;
 }
 
-export function shouldAbbreviateInLakhs(value: number): boolean {
+export function formatIndianCrores(value: number, decimalPlaces = 2): string {
+  const sign = value < 0 ? '-' : '';
+  const crores = Math.abs(value) / CRORE_THRESHOLD;
+  return `${sign}₹${crores.toFixed(decimalPlaces)}Cr`;
+}
+
+/** Pick L / Cr / full number for compact display. */
+export function formatIndianAbbreviated(value: number, decimalPlaces = 2): string {
+  const abs = Math.abs(value);
+  if (abs >= CRORE_THRESHOLD) {
+    return formatIndianCrores(value, decimalPlaces);
+  }
+  if (abs >= LAKH_THRESHOLD) {
+    return formatIndianLakhs(value, decimalPlaces);
+  }
+  return formatIndianCurrency(value, decimalPlaces);
+}
+
+export function shouldAbbreviateIndianCurrency(value: number): boolean {
   return Math.abs(value) >= LAKH_THRESHOLD;
+}
+
+/** @deprecated Use shouldAbbreviateIndianCurrency — kept for existing imports. */
+export function shouldAbbreviateInLakhs(value: number): boolean {
+  return shouldAbbreviateIndianCurrency(value);
 }
 
 export function formatIndianCurrencyDisplay(
@@ -36,8 +60,8 @@ export function formatIndianCurrencyDisplay(
 ): string {
   const { abbreviated = false, maximumFractionDigits = 2 } = options;
 
-  if (abbreviated && shouldAbbreviateInLakhs(value)) {
-    return formatIndianLakhs(value);
+  if (abbreviated && shouldAbbreviateIndianCurrency(value)) {
+    return formatIndianAbbreviated(value, maximumFractionDigits);
   }
 
   return formatIndianCurrency(value, maximumFractionDigits);

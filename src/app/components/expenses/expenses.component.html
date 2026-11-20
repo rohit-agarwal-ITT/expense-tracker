@@ -308,7 +308,7 @@
             <p class="list-header-meta" *ngIf="!isExpensesListExpanded">
               <app-indian-currency
                 [amount]="bulkSelectionMode && selectedExpenseIds.size > 0 ? getSelectedExpensesTotal() : getTotalAmount()"
-                [abbreviate]="false">
+                [abbreviate]="true">
               </app-indian-currency>
               <span class="list-header-meta-sep">·</span>
               <span>{{ bulkSelectionMode && selectedExpenseIds.size > 0
@@ -343,7 +343,7 @@
                 <span class="stat-summary__amount">
                   <app-indian-currency
                     [amount]="bulkSelectionMode && selectedExpenseIds.size > 0 ? getSelectedExpensesTotal() : getTotalAmount()"
-                    [abbreviate]="false">
+                    [abbreviate]="true">
                   </app-indian-currency>
                 </span>
                 <span class="stat-summary__badge">

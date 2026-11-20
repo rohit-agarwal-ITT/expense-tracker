@@ -101,11 +101,31 @@
 .stat-value.profit {
   color: #10b981;
   text-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+
+  app-indian-currency {
+    color: inherit;
+    -webkit-text-fill-color: inherit;
+  }
 }
 
 .stat-value.loss {
   color: #ef4444;
   text-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+
+  app-indian-currency {
+    color: inherit;
+    -webkit-text-fill-color: inherit;
+  }
+}
+
+.stat-value app-indian-currency,
+td.profit app-indian-currency,
+td.loss app-indian-currency,
+strong.profit app-indian-currency,
+strong.loss app-indian-currency,
+strong.neutral app-indian-currency {
+  color: inherit;
+  -webkit-text-fill-color: inherit;
 }
 
 /* Search Card */

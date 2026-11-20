@@ -28,7 +28,7 @@
           <span class="expense-count">{{ category.count }} expenses</span>
         </div>
         <div class="card-content">
-          <div class="amount">₹{{ category.amount | number }}</div>
+          <div class="amount"><app-indian-currency [amount]="category.amount"></app-indian-currency></div>
           <div class="description">{{ getOrphanedCategoryDescription(category.categoryId) }}</div>
           
           <!-- Expense Details List -->
@@ -39,7 +39,7 @@
                 <div class="expense-info">
                   <div class="expense-name">{{ expense.description || 'No description' }}</div>
                   <div class="expense-meta">
-                    <span class="expense-amount">₹{{ expense.amount | number }}</span>
+                    <span class="expense-amount"><app-indian-currency [amount]="expense.amount"></app-indian-currency></span>
                     <span class="expense-date">{{ expense.date | date:'MMM dd, yyyy' }}</span>
                   </div>
                 </div>
@@ -88,7 +88,7 @@
                   <div class="preview-expense-info">
                     <div class="preview-expense-name">{{ expense.description || 'No description' }}</div>
                     <div class="preview-expense-meta">
-                      <span class="preview-amount">₹{{ expense.amount | number }}</span>
+                      <span class="preview-amount"><app-indian-currency [amount]="expense.amount"></app-indian-currency></span>
                       <span class="preview-date">{{ expense.date | date:'MMM dd' }}</span>
                     </div>
                   </div>

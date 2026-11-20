@@ -8,6 +8,7 @@ import { Expense } from '../../core/models/expense.model';
 import { Subscription, combineLatest } from 'rxjs';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
 
 interface OrphanedCategorySummary {
   categoryId: string;
@@ -19,7 +20,7 @@ interface OrphanedCategorySummary {
 @Component({
   selector: 'app-expense-category-mapper',
   standalone: true,
-  imports: [CommonModule, FormsModule, LoadingComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, LoadingComponent, PageHeaderComponent, IndianCurrencyComponent],
   templateUrl: './expense-category-mapper.component.html',
   styleUrls: ['./expense-category-mapper.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

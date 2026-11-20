@@ -10,7 +10,6 @@ import { ScrollService } from '../../core/services/scroll.service';
 import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
-import { formatIndianCurrencyDisplay } from '../../core/utils/currency-format.util';
 import { Subscription, combineLatest } from 'rxjs';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
@@ -471,16 +470,14 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     const change = ((current - previous) / previous) * 100;
     
     const amountChange = current - previous;
-    const displayMode = this.trendDisplayModes[report.monthKey] || 'percentage';
-    const displayText = displayMode === 'percentage' 
-      ? `${change > 0 ? '+' : ''}${change.toFixed(1)}%`
-      : `${amountChange > 0 ? '+' : ''}${formatIndianCurrencyDisplay(Math.abs(amountChange), { abbreviated: true })}`;
-    
+    const percentageText = `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
 
     if (change > 50) {
       return { 
         icon: '🚨', 
-        text: displayText,
+        text: percentageText,
+        percentageText,
+        amountChange,
         description: 'Significantly higher spending',
         insight: 'Consider reviewing your budget',
         severity: 'high',
@@ -491,7 +488,9 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     } else if (change > 10) {
       return { 
         icon: '📈', 
-        text: displayText,
+        text: percentageText,
+        percentageText,
+        amountChange,
         description: 'Higher spending than last month',
         insight: 'Monitor your expenses closely',
         severity: 'medium',
@@ -502,7 +501,9 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     } else if (change < -50) {
       return { 
         icon: '🎉', 
-        text: displayText,
+        text: percentageText,
+        percentageText,
+        amountChange,
         description: 'Significantly lower spending',
         insight: 'Great job managing your budget!',
         severity: 'high',
@@ -513,7 +514,9 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     } else if (change < -10) {
       return { 
         icon: '📉', 
-        text: displayText,
+        text: percentageText,
+        percentageText,
+        amountChange,
         description: 'Lower spending than last month',
         insight: 'Good progress on savings',
         severity: 'medium',
@@ -522,10 +525,11 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
         isNeutral: false
       };
     } else {
-      const displayMode = this.trendDisplayModes[report.monthKey] || 'percentage';
       return { 
         icon: '➡️', 
-        text: displayMode === 'percentage' ? '±0%' : '₹0',
+        text: '±0%',
+        percentageText: '±0%',
+        amountChange,
         description: 'Similar spending to last month',
         insight: 'Consistent spending pattern',
         severity: 'low',

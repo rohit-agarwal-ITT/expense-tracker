@@ -278,7 +278,14 @@
                     [class.trend-neutral]="trend.isNeutral"
                     (click)="toggleTrendDisplayMode($event, report.monthKey)"
                     title="Click to toggle between percentage and amount">
-                    {{ trend.text }}
+                    <ng-container *ngIf="(trendDisplayModes[report.monthKey] || 'percentage') === 'percentage'; else reportTrendAmount">
+                      {{ trend.percentageText ?? trend.text }}
+                    </ng-container>
+                    <ng-template #reportTrendAmount>
+                      <span (click)="$event.stopPropagation()">
+                        <app-indian-currency [amount]="trend.amountChange"></app-indian-currency>
+                      </span>
+                    </ng-template>
                   </span>
                 </div>
                 <div class="trend-description">{{ trend.description }}</div>

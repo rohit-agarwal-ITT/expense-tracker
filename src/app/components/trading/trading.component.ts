@@ -7,6 +7,7 @@ import { FirebaseService } from '../../core/services/firebase.service';
 import { DialogService } from '../../core/services/dialog.service';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
 import { Subscription, combineLatest } from 'rxjs';
 import { Trade } from '../../core/models/trade.model';
 import { formatIndianCurrencyDisplay } from '../../core/utils/currency-format.util';
@@ -14,7 +15,7 @@ import { formatIndianCurrencyDisplay } from '../../core/utils/currency-format.ut
 @Component({
   selector: 'app-trading',
   standalone: true,
-  imports: [CommonModule, FormsModule, LoadingComponent, PageHeaderComponent, BaseChartDirective],
+  imports: [CommonModule, FormsModule, LoadingComponent, PageHeaderComponent, BaseChartDirective, IndianCurrencyComponent],
   templateUrl: './trading.component.html',
   styleUrls: ['./trading.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

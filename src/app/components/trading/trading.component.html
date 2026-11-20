@@ -28,7 +28,7 @@
         <div class="stat-icon">✅</div>
         <div class="stat-content">
           <div class="stat-label">Total Profit</div>
-          <div class="stat-value profit">{{ formatCurrency(getTotalProfitAmount()) }}</div>
+          <div class="stat-value profit"><app-indian-currency [amount]="getTotalProfitAmount()"></app-indian-currency></div>
         </div>
       </div>
     </div>
@@ -37,7 +37,7 @@
         <div class="stat-icon">❌</div>
         <div class="stat-content">
           <div class="stat-label">Total Loss</div>
-          <div class="stat-value loss">{{ formatCurrency(getTotalLossAmount()) }}</div>
+          <div class="stat-value loss"><app-indian-currency [amount]="getTotalLossAmount()"></app-indian-currency></div>
         </div>
       </div>
     </div>
@@ -47,7 +47,7 @@
         <div class="stat-content">
           <div class="stat-label">Net P&L</div>
           <div class="stat-value" [class]="getProfitLossClass(getNetProfitLoss())">
-            {{ formatCurrency(getNetProfitLoss()) }}
+            <app-indian-currency [amount]="getNetProfitLoss()"></app-indian-currency>
           </div>
         </div>
       </div>
@@ -542,10 +542,10 @@
               <td>
                 <span class="badge bg-danger">{{ month.lossCount }}</span>
               </td>
-              <td class="profit">{{ formatCurrency(month.totalProfit) }}</td>
-              <td class="loss">{{ formatCurrency(month.totalLoss) }}</td>
+              <td class="profit"><app-indian-currency [amount]="month.totalProfit"></app-indian-currency></td>
+              <td class="loss"><app-indian-currency [amount]="month.totalLoss"></app-indian-currency></td>
               <td>
-                <strong [class]="getProfitLossClass(month.netPnl)">{{ formatCurrency(month.netPnl) }}</strong>
+                <strong [class]="getProfitLossClass(month.netPnl)"><app-indian-currency [amount]="month.netPnl"></app-indian-currency></strong>
               </td>
             </tr>
           </tbody>
@@ -566,7 +566,7 @@
             <div class="monthly-summary-right">
               <div class="monthly-summary-net">
                 <div class="net-pnl">
-                  <strong [class]="getProfitLossClass(month.netPnl)">{{ formatCurrency(month.netPnl) }}</strong>
+                  <strong [class]="getProfitLossClass(month.netPnl)"><app-indian-currency [amount]="month.netPnl"></app-indian-currency></strong>
                 </div>
               </div>
               <span class="expand-icon">👁️</span>
@@ -649,10 +649,10 @@
               <td>
                 <span class="badge bg-danger">{{ day.lossCount }}</span>
               </td>
-              <td class="profit">{{ formatCurrency(day.totalProfit) }}</td>
-              <td class="loss">{{ formatCurrency(day.totalLoss) }}</td>
+              <td class="profit"><app-indian-currency [amount]="day.totalProfit"></app-indian-currency></td>
+              <td class="loss"><app-indian-currency [amount]="day.totalLoss"></app-indian-currency></td>
               <td>
-                <strong [class]="getProfitLossClass(day.netPnl)">{{ formatCurrency(day.netPnl) }}</strong>
+                <strong [class]="getProfitLossClass(day.netPnl)"><app-indian-currency [amount]="day.netPnl"></app-indian-currency></strong>
               </td>
             </tr>
           </tbody>
@@ -672,7 +672,7 @@
             </div>
             <div class="daily-summary-right">
               <div class="daily-summary-net">
-                <strong [class]="getProfitLossClass(day.netPnl)">{{ formatCurrency(day.netPnl) }}</strong>
+                <strong [class]="getProfitLossClass(day.netPnl)"><app-indian-currency [amount]="day.netPnl"></app-indian-currency></strong>
               </div>
               <span class="expand-icon">👁️</span>
             </div>
@@ -759,7 +759,7 @@
               </td>
               <td>
                 <strong [class]="getProfitLossClass(trade.isProfit ? trade.amount : -trade.amount)">
-                  {{ formatCurrency(trade.amount || 0) }}
+                  <app-indian-currency [amount]="trade.amount || 0"></app-indian-currency>
                 </strong>
               </td>
               <td>{{ trade.notes || '-' }}</td>
@@ -799,7 +799,7 @@
             <div class="trade-card-right">
               <div class="trade-card-amount">
                 <strong [class]="getProfitLossClass(trade.isProfit ? trade.amount : -trade.amount)">
-                  {{ formatCurrency(trade.amount || 0) }}
+                  <app-indian-currency [amount]="trade.amount || 0"></app-indian-currency>
                 </strong>
               </div>
               <div class="trade-card-actions">

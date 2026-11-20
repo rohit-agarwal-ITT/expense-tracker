@@ -1,4 +1,7 @@
 /* Global Styles for Expense Tracker */
+@use 'styles/tokens';
+@use 'styles/page-layout';
+@use 'styles/auth';
 
 :root {
   /* Enhanced Color Palette */

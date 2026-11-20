@@ -10,24 +10,24 @@ import { DefaultCategoriesService } from '../../core/services/default-categories
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="register-container">
-      <div class="register-card">
-        <div class="register-header">
-          <div class="brand">
-            <span class="brand-icon">💰</span>
-            <h1 class="brand-title">Expense Tracker</h1>
+    <div class="auth-page">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="auth-brand">
+            <span class="auth-brand-icon">💰</span>
+            <h1 class="auth-brand-title">Expense Tracker</h1>
           </div>
-          <p class="register-subtitle">Create your account to start tracking expenses</p>
+          <p class="auth-subtitle">Create your account to start tracking expenses</p>
         </div>
 
-        <form (ngSubmit)="register()" #registerForm="ngForm" class="register-form">
+        <form (ngSubmit)="register()" #registerForm="ngForm" class="auth-form">
           <div class="form-group">
             <label for="displayName" class="form-label">Full Name</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               id="displayName"
               name="displayName"
-              [(ngModel)]="displayName" 
+              [(ngModel)]="displayName"
               required
               class="form-control"
               placeholder="Enter your full name">
@@ -35,11 +35,11 @@ import { DefaultCategoriesService } from '../../core/services/default-categories
 
           <div class="form-group">
             <label for="email" class="form-label">Email</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               id="email"
               name="email"
-              [(ngModel)]="email" 
+              [(ngModel)]="email"
               required
               class="form-control"
               placeholder="Enter your email">
@@ -47,11 +47,11 @@ import { DefaultCategoriesService } from '../../core/services/default-categories
 
           <div class="form-group">
             <label for="password" class="form-label">Password</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               id="password"
               name="password"
-              [(ngModel)]="password" 
+              [(ngModel)]="password"
               required
               minlength="6"
               class="form-control"
@@ -60,205 +60,35 @@ import { DefaultCategoriesService } from '../../core/services/default-categories
 
           <div class="form-group">
             <label for="confirmPassword" class="form-label">Confirm Password</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               id="confirmPassword"
               name="confirmPassword"
-              [(ngModel)]="confirmPassword" 
+              [(ngModel)]="confirmPassword"
               required
               class="form-control"
               placeholder="Confirm your password">
           </div>
 
-          <div class="form-actions">
-            <button 
-              type="submit" 
-              class="btn-primary"
+          <div class="auth-actions">
+            <button
+              type="submit"
+              class="auth-btn-primary"
               [disabled]="!registerForm.form.valid || loading || !passwordsMatch()">
-              <span *ngIf="loading" class="loading-spinner">⏳</span>
+              <span *ngIf="loading">⏳</span>
               <span *ngIf="!loading">Create Account</span>
             </button>
           </div>
         </form>
 
-        <div class="login-link">
-          <p>Already have an account? <a (click)="goToLogin()" class="link">Sign in</a></p>
+        <div class="auth-footer">
+          <p>Already have an account? <a (click)="goToLogin()" class="auth-link">Sign in</a></p>
         </div>
 
-        <div *ngIf="error" class="error-message">
-          {{ error }}
-        </div>
+        <div *ngIf="error" class="auth-error">{{ error }}</div>
       </div>
     </div>
-  `,
-  styles: [`
-    .register-container {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 1rem;
-    }
-
-    .register-card {
-      background: white;
-      border-radius: 20px;
-      padding: 2.5rem;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .register-header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .brand-icon {
-      font-size: 2rem;
-    }
-
-    .brand-title {
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: #333;
-      margin: 0;
-    }
-
-    .register-subtitle {
-      color: #666;
-      margin: 0;
-      font-size: 1rem;
-    }
-
-    .register-form {
-      margin-bottom: 1.5rem;
-    }
-
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-
-    .form-label {
-      display: block;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 0.5rem;
-      font-size: 0.9rem;
-    }
-
-    .form-control {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      border: 2px solid #e9ecef;
-      border-radius: 12px;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-      box-sizing: border-box;
-    }
-
-    .form-control:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
-    .form-control.ng-invalid.ng-touched {
-      border-color: #dc3545;
-    }
-
-    .form-actions {
-      margin-top: 2rem;
-    }
-
-    .btn-primary {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-
-    .btn-primary:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-    }
-
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .loading-spinner {
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-
-
-    .login-link {
-      text-align: center;
-      margin-top: 1rem;
-    }
-
-    .login-link p {
-      color: #666;
-      margin: 0;
-    }
-
-    .link {
-      color: #667eea;
-      text-decoration: none;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .link:hover {
-      text-decoration: underline;
-    }
-
-    .error-message {
-      background: #fee;
-      color: #c33;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      margin-top: 1rem;
-      text-align: center;
-      border: 1px solid #fcc;
-    }
-
-    @media (max-width: 480px) {
-      .register-card {
-        padding: 2rem 1.5rem;
-      }
-      
-      .brand-title {
-        font-size: 1.5rem;
-      }
-    }
-  `]
+  `
 })
 export class RegisterComponent {
   displayName: string = '';
@@ -295,7 +125,6 @@ export class RegisterComponent {
 
     try {
       await this.authService.register(this.email, this.password, this.displayName);
-      // Create default categories for new user
       await this.defaultCategoriesService.createDefaultCategories();
       this.router.navigate(['/dashboard']);
     } catch (error: any) {
@@ -304,8 +133,6 @@ export class RegisterComponent {
       this.loading = false;
     }
   }
-
-
 
   goToLogin() {
     this.router.navigate(['/login']);
@@ -330,4 +157,4 @@ export class RegisterComponent {
       return 'An error occurred during registration. Please try again.';
     }
   }
-} 
+}

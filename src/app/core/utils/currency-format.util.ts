@@ -1,4 +1,5 @@
-const LAKH_THRESHOLD = 900000;
+/** Abbreviate to lakhs (e.g. ₹1.19 L) at and above one lakh — matches Indian convention. */
+const LAKH_THRESHOLD = 100_000;
 
 export function formatIndianNumber(
   value: number,

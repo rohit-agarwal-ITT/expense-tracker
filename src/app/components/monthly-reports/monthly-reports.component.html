@@ -1,35 +1,31 @@
-<div class="monthly-reports-page">
-  <!-- Smart Header -->
-  <div class="smart-header">
-    <div class="header-content">
-      <div class="header-left">
-        <h1 class="page-title">📊 Financial Reports</h1>
-        <p class="page-description">Comprehensive spending analysis and insights</p>
-      </div>
-      <div class="header-actions">
-
-        <button class="action-btn secondary" (click)="toggleAnalytics()">
-          <span class="action-icon">{{ showAnalytics ? '📊' : '🔍' }}</span>
-          <span class="action-text">{{ showAnalytics ? 'Hide Analytics' : 'Show Analytics' }}</span>
-        </button>
-      </div>
+<div class="monthly-reports-page page-shell">
+  <app-page-header
+    title="📊 Financial Reports"
+    subtitle="Comprehensive spending analysis and insights">
+    <div headerActions class="header-actions">
+      <button class="action-btn secondary" (click)="exportReport()">
+        <span class="action-icon">📥</span>
+        <span class="action-text">Export CSV</span>
+      </button>
+      <button class="action-btn secondary" (click)="toggleAnalytics()">
+        <span class="action-icon">{{ showAnalytics ? '📊' : '🔍' }}</span>
+        <span class="action-text">{{ showAnalytics ? 'Hide Analytics' : 'Show Analytics' }}</span>
+      </button>
     </div>
-  </div>
+  </app-page-header>
 
-  <!-- Loading Spinner -->
-  <div class="loading-container" *ngIf="isLoading">
-    <div class="loading-spinner">
-      <div class="spinner"></div>
-      <p class="loading-text">Loading reports...</p>
-    </div>
-  </div>
+  <app-loading
+    *ngIf="isLoading"
+    message="Loading reports..."
+    type="card">
+  </app-loading>
 
   <!-- Smart Analytics Overview -->
   <div class="analytics-section" *ngIf="monthlyReports.length > 0 && showAnalytics && !isLoading">
     <div class="analytics-header">
       <h3>📈 Spending Analytics</h3>
       <div class="analytics-period">
-        <span class="period-badge">{{ getAnalyticsPeriod() }}</span>
+        <span class="period-badge">{{ analyticsPeriod }}</span>
       </div>
     </div>
 
@@ -40,20 +36,20 @@
           <div class="analytics-value" (click)="$event.stopPropagation()"><app-indian-currency
               [amount]="totalSpent"></app-indian-currency></div>
           <div class="analytics-label">Total Spent</div>
-          <div class="analytics-trend" *ngIf="getSpendingTrend()">
+          <div class="analytics-trend" *ngIf="spendingTrendInfo as trend">
             <div class="trend-header clickable-trend" (click)="toggleTrendDisplayMode($event)"
               (mousedown)="$event.stopPropagation()" (mouseup)="$event.stopPropagation()"
               (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()"
               title="Click to toggle between percentage and amount">
-              <span class="trend-icon">{{ getSpendingTrend().icon }}</span>
-              <span class="trend-text" [class.trend-positive]="getSpendingTrend()?.isPositive"
-                [class.trend-negative]="getSpendingTrend()?.isNegative"
-                [class.trend-neutral]="getSpendingTrend()?.isNeutral">
-                {{ getSpendingTrend().text }}
+              <span class="trend-icon">{{ trend.icon }}</span>
+              <span class="trend-text" [class.trend-positive]="trend.isPositive"
+                [class.trend-negative]="trend.isNegative"
+                [class.trend-neutral]="trend.isNeutral">
+                {{ trend.text }}
               </span>
             </div>
-            <div class="trend-description">{{ getSpendingTrend().description }}</div>
-            <div class="trend-insight">{{ getSpendingTrend().insight }}</div>
+            <div class="trend-description">{{ trend.description }}</div>
+            <div class="trend-insight">{{ trend.insight }}</div>
           </div>
         </div>
       </div>
@@ -71,7 +67,7 @@
       <div class="analytics-card tertiary">
         <div class="analytics-icon">📊</div>
         <div class="analytics-content">
-          <div class="analytics-value">{{ getTotalExpenses() }}</div>
+          <div class="analytics-value">{{ totalExpenseCount }}</div>
           <div class="analytics-label">Total Expenses</div>
           <div class="analytics-subtitle">All time</div>
         </div>
@@ -80,9 +76,9 @@
       <div class="analytics-card accent">
         <div class="analytics-icon">🏆</div>
         <div class="analytics-content">
-          <div class="analytics-value">{{ getTopCategory()?.name || 'None' }}</div>
+          <div class="analytics-value">{{ topCategory?.name || 'None' }}</div>
           <div class="analytics-label">Top Category</div>
-          <div class="analytics-subtitle">{{ getTopCategoryPercentage() }}% of total</div>
+          <div class="analytics-subtitle">{{ topCategoryPercentage }}% of total</div>
         </div>
       </div>
     </div>
@@ -199,99 +195,89 @@
       </div>
       <div class="header-right">
         <div class="reports-count">{{ getFilteredReports().length }} months</div>
-        <div class="view-toggle">
-          <button class="view-btn" [class.active]="viewMode === 'grid'" (click)="setViewMode('grid')">
-            <span class="view-icon">⊞</span>
-            <span class="view-text">Grid</span>
-          </button>
-          <button class="view-btn" [class.active]="viewMode === 'list'" (click)="setViewMode('list')">
-            <span class="view-icon">☰</span>
-            <span class="view-text">List</span>
-          </button>
-        </div>
       </div>
     </div>
 
-    <div class="reports-grid" *ngIf="getFilteredReports().length > 0 && viewMode === 'grid' && !isLoading">
-      <div class="report-card" *ngFor="let report of getFilteredReports()" (click)="selectMonth(report.monthKey)">
-        <div class="report-header">
-          <div class="month-info">
-            <h4 class="month-name">{{ report.monthName }}</h4>
-            <div class="month-year">{{ report.year }}</div>
-          </div>
-          <div class="report-arrow clickable-arrow" (click)="selectMonth(report.monthKey); $event.stopPropagation()"
-            title="View detailed report">→</div>
-        </div>
-        <div class="report-stats" (click)="$event.stopPropagation()">
-          <div class="report-amount"><app-indian-currency [amount]="report.totalAmount"></app-indian-currency></div>
-          <div class="report-count">{{ report.expenseCount }} expenses</div>
-        </div>
-        <div class="category-preview">
-          <div class="category-item" *ngFor="let breakdown of report.categoryBreakdown.slice(0, 3)">
-            <span class="category-icon" [style.background-color]="breakdown.category.color">{{ breakdown.category.icon
-              }}</span>
-            <span class="category-name">{{ breakdown.category.name }}</span>
-            <span class="category-amount"><app-indian-currency [amount]="breakdown.amount"></app-indian-currency></span>
-          </div>
-        </div>
-        <div class="report-footer">
-          <div class="trend-indicator" *ngIf="getReportTrend(report)">
-            <div class="trend-header">
-              <span class="trend-icon">{{ getReportTrend(report)?.icon }}</span>
-              <span class="trend-percentage clickable-trend" [class.trend-positive]="getReportTrend(report)?.isPositive"
-                [class.trend-negative]="getReportTrend(report)?.isNegative"
-                [class.trend-neutral]="getReportTrend(report)?.isNeutral"
-                (click)="toggleTrendDisplayMode($event, report.monthKey)"
-                title="Click to toggle between percentage and amount">
-                {{ getReportTrend(report)?.text }}
-              </span>
-            </div>
-            <div class="trend-description">{{ getReportTrend(report)?.description }}</div>
-            <div class="trend-insight">{{ getReportTrend(report)?.insight }}</div>
-          </div>
-        </div>
+    <div class="year-quick-filter" *ngIf="showYearNavigation() && !isLoading">
+      <span class="year-quick-label">Year</span>
+      <div class="year-chip-row">
+        <button
+          type="button"
+          class="year-chip"
+          [class.active]="!filterYear"
+          (click)="selectYearFilter('')">
+          All
+        </button>
+        <button
+          type="button"
+          class="year-chip"
+          *ngFor="let year of getAvailableYears()"
+          [class.active]="filterYear === year"
+          (click)="selectYearFilter(year)">
+          {{ year }}
+        </button>
       </div>
     </div>
 
-    <div class="reports-list" *ngIf="getFilteredReports().length > 0 && viewMode === 'list' && !isLoading">
-      <div class="report-list-item" *ngFor="let report of getFilteredReports()" (click)="selectMonth(report.monthKey)">
-        <div class="list-item-header">
-          <div class="month-info">
-            <h4 class="month-name">{{ report.monthName }}</h4>
-            <div class="month-year">{{ report.year }}</div>
+    <div class="reports-by-year" *ngIf="yearReportGroups.length > 0 && !isLoading">
+      <section
+        class="year-group"
+        *ngFor="let group of yearReportGroups; trackBy: trackYearGroup">
+        <header class="year-group-header" *ngIf="yearReportGroups.length > 1">
+          <div class="year-group-title">
+            <span class="year-group-year">{{ group.year }}</span>
+            <span class="year-group-subtitle">{{ group.monthCount }} months · {{ group.expenseCount }} expenses</span>
           </div>
-          <div class="list-item-amount" (click)="$event.stopPropagation()"><app-indian-currency
-              [amount]="report.totalAmount"></app-indian-currency></div>
-          <div class="report-arrow clickable-arrow" (click)="selectMonth(report.monthKey); $event.stopPropagation()"
-            title="View detailed report">→</div>
-        </div>
-        <div class="list-item-details">
-          <div class="detail-item">
-            <span class="detail-label">Expenses:</span>
-            <span class="detail-value">{{ report.expenseCount }}</span>
+          <div class="year-group-total">
+            <span class="year-group-total-label">Year total</span>
+            <app-indian-currency [amount]="group.totalAmount"></app-indian-currency>
           </div>
-          <div class="detail-item">
-            <span class="detail-label">Top Category:</span>
-            <span class="detail-value">{{ getTopCategoryForReport(report)?.name || 'None' }}</span>
-          </div>
-        </div>
-        <div class="list-item-footer" *ngIf="getReportTrend(report)">
-          <div class="trend-indicator">
-            <div class="trend-header">
-              <span class="trend-icon">{{ getReportTrend(report)?.icon }}</span>
-              <span class="trend-percentage clickable-trend" [class.trend-positive]="getReportTrend(report)?.isPositive"
-                [class.trend-negative]="getReportTrend(report)?.isNegative"
-                [class.trend-neutral]="getReportTrend(report)?.isNeutral"
-                (click)="toggleTrendDisplayMode($event, report.monthKey)"
-                title="Click to toggle between percentage and amount">
-                {{ getReportTrend(report)?.text }}
-              </span>
+        </header>
+
+        <div class="reports-grid">
+          <div
+            class="report-card"
+            *ngFor="let report of group.reports; trackBy: trackMonthReport"
+            (click)="selectMonth(report.monthKey)">
+            <div class="report-header">
+              <div class="month-info">
+                <h4 class="month-name">{{ report.monthLongName || report.monthName }}</h4>
+                <div class="month-year" *ngIf="yearReportGroups.length <= 1">{{ report.year }}</div>
+              </div>
+              <div class="report-arrow clickable-arrow" (click)="selectMonth(report.monthKey); $event.stopPropagation()"
+                title="View detailed report">→</div>
             </div>
-            <div class="trend-description">{{ getReportTrend(report)?.description }}</div>
-            <div class="trend-insight">{{ getReportTrend(report)?.insight }}</div>
+            <div class="report-stats" (click)="$event.stopPropagation()">
+              <div class="report-amount"><app-indian-currency [amount]="report.totalAmount"></app-indian-currency></div>
+              <div class="report-count">{{ report.expenseCount }} expenses</div>
+            </div>
+            <div class="category-preview">
+              <div class="category-item" *ngFor="let breakdown of report.categoryBreakdown.slice(0, 3)">
+                <span class="category-icon" [style.background-color]="breakdown.category.color">{{ breakdown.category.icon
+                  }}</span>
+                <span class="category-name">{{ breakdown.category.name }}</span>
+                <span class="category-amount"><app-indian-currency [amount]="breakdown.amount"></app-indian-currency></span>
+              </div>
+            </div>
+            <div class="report-footer">
+              <div class="trend-indicator" *ngIf="reportTrendsMap[report.monthKey] as trend">
+                <div class="trend-header">
+                  <span class="trend-icon">{{ trend.icon }}</span>
+                  <span class="trend-percentage clickable-trend" [class.trend-positive]="trend.isPositive"
+                    [class.trend-negative]="trend.isNegative"
+                    [class.trend-neutral]="trend.isNeutral"
+                    (click)="toggleTrendDisplayMode($event, report.monthKey)"
+                    title="Click to toggle between percentage and amount">
+                    {{ trend.text }}
+                  </span>
+                </div>
+                <div class="trend-description">{{ trend.description }}</div>
+                <div class="trend-insight">{{ trend.insight }}</div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <div class="empty-state" *ngIf="getFilteredReports().length === 0">

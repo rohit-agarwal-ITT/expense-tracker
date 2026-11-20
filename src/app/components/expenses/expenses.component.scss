@@ -92,13 +92,10 @@ body {
 }
 
 /* Main container for expenses page */
-.container-fluid {
+.expenses-page {
   overflow-x: hidden;
   overflow-y: visible;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
-  height: auto;
-  max-height: none;
-  padding-bottom: 2rem;
+  padding-bottom: var(--space-8);
 }
 
 /* Global Search Bar */

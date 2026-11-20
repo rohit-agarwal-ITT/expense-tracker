@@ -17,8 +17,14 @@
   <header class="app-header" [class.header-hidden]="headerHidden">
             <div class="header-content">
               <div class="header-left">
-                <button class="sidebar-toggle" (click)="toggleSidebar()" aria-label="Toggle sidebar">
-                  <span class="hamburger-icon">☰</span>
+                <button
+                  type="button"
+                  class="sidebar-toggle"
+                  (click)="toggleSidebar($event)"
+                  [attr.aria-expanded]="sidebarOpen"
+                  aria-controls="app-sidebar"
+                  aria-label="Toggle navigation menu">
+                  <span class="hamburger-icon" aria-hidden="true">☰</span>
                 </button>
                 <div class="brand">
                   <span class="brand-icon">💰</span>
@@ -66,7 +72,7 @@
   <div class="sidebar-overlay" [class.sidebar-overlay-visible]="sidebarOpen" (click)="closeSidebar()"></div>
 
   <!-- Sidebar -->
-  <aside class="sidebar" [class.sidebar-open]="sidebarOpen">
+  <aside id="app-sidebar" class="sidebar" [class.sidebar-open]="sidebarOpen">
     <div class="sidebar-header">
       <div class="sidebar-brand">
         <span class="brand-icon">💰</span>

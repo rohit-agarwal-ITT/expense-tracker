@@ -1,15 +1,15 @@
-<div class="mapper-container">
-  <!-- Header -->
-  <div class="mapper-header">
-    <h1>🔧 Expense Category Mapper</h1>
-    <p>Map orphaned expenses to proper categories based on your analysis</p>
-  </div>
+<div class="mapper-container page-shell">
+  <app-page-header
+    title="🔧 Expense Category Mapper"
+    subtitle="Map orphaned expenses to proper categories based on your analysis"
+    [hasActions]="false">
+  </app-page-header>
 
-  <!-- Loading State -->
-  <div class="loading-state" *ngIf="isLoading">
-    <div class="loading-spinner">⏳</div>
-    <p>Loading orphaned expenses...</p>
-  </div>
+  <app-loading
+    *ngIf="isLoading"
+    message="Loading orphaned expenses..."
+    type="card">
+  </app-loading>
 
   <!-- No Orphaned Expenses -->
   <div class="no-orphaned" *ngIf="!isLoading && orphanedCategories.length === 0">

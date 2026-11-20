@@ -11,6 +11,7 @@ import { ActionHistoryService } from '../../core/services/action-history.service
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { Subscription, combineLatest } from 'rxjs';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
@@ -20,7 +21,7 @@ import html2canvas from 'html2canvas';
 @Component({
   selector: 'app-expenses',
   standalone: true,
-  imports: [CommonModule, FormsModule, LoadingComponent, SkeletonComponent, IndianCurrencyComponent],
+  imports: [CommonModule, FormsModule, LoadingComponent, SkeletonComponent, IndianCurrencyComponent, PageHeaderComponent],
   templateUrl: './expenses.component.html',
   styleUrls: ['./expenses.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -73,7 +74,7 @@ export class ExpensesComponent implements OnInit, OnDestroy {
   itemsPerPage: number = 10;
 
   // Loading states
-  isLoading: boolean = true;
+  isLoading = false;
   isSaving: boolean = false;
   isDeleting: boolean = false;
   deletingExpenseIds: Set<string> = new Set(); // Track which expenses are being deleted
@@ -122,6 +123,8 @@ export class ExpensesComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    this.isLoading = !this.firebaseService.hasCoreDataCached;
+
     // Check for edit mode and category filter from query parameters
     this.route.queryParams.subscribe(params => {
       const editId = params['edit'];
@@ -187,7 +190,7 @@ export class ExpensesComponent implements OnInit, OnDestroy {
 
     // Subscribe to loading state
     this.subscription.add(
-      this.firebaseService.loading$.subscribe(loading => {
+      this.firebaseService.getPageLoading$().subscribe((loading) => {
         this.isLoading = loading;
         this.cdr.markForCheck();
       })
@@ -199,6 +202,8 @@ export class ExpensesComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscription.unsubscribe();
+    // Release any in-flight dialog waiters so a stale error cannot show on the next visit
+    this.dialogService.close();
   }
 
   // Load dashboard filter state from FilterStateService
@@ -276,13 +281,17 @@ export class ExpensesComponent implements OnInit, OnDestroy {
   }
 
   async addExpense() {
+    if (this.isSaving) {
+      return;
+    }
+
     if (!(await this.validateExpense())) {
       return;
     }
 
+    this.isSaving = true;
+    this.cdr.markForCheck();
     try {
-      this.isSaving = true;
-      this.cdr.markForCheck(); // Trigger change detection for OnPush
       if (this.isEditMode) {
         await this.saveExpenseChanges();
       } else {
@@ -290,60 +299,66 @@ export class ExpensesComponent implements OnInit, OnDestroy {
       }
     } finally {
       this.isSaving = false;
-      this.cdr.markForCheck(); // Trigger change detection for OnPush to hide loader
+      this.cdr.markForCheck();
     }
   }
 
   async createNewExpense() {
+    const amount = parseFloat(this.amountInput);
+    if (isNaN(amount) || amount <= 0) {
+      await this.dialogService.warning('Please enter a valid amount greater than 0.');
+      return;
+    }
+
+    const categoryValidation = this.validateCategoryExists(this.newExpense.categoryId);
+    if (!categoryValidation.exists) {
+      if (categoryValidation.wasDeleted) {
+        await this.dialogService.error(
+          'The selected category no longer exists. It may have been deleted. Please select a different category.',
+          'Category Deleted'
+        );
+      } else {
+        await this.dialogService.error(
+          'Invalid category selected. Please select a valid category from the list.',
+          'Invalid Category'
+        );
+      }
+      this.newExpense.categoryId = '';
+      return;
+    }
+
+    const expenseData: Omit<Expense, 'id'> = {
+      description: this.newExpense.description,
+      amount: amount,
+      date: this.newExpense.date,
+      categoryId: this.newExpense.categoryId,
+      paymentMethod: this.newExpense.paymentMethod || 'Cash',
+      tags: this.newExpense.tags || [],
+      priority: this.newExpense.priority || 'medium',
+      notes: this.newExpense.notes || '',
+      location: this.newExpense.location || '',
+      receiptNumber: this.newExpense.receiptNumber || ''
+    };
+
     try {
-      const amount = parseFloat(this.amountInput);
-      if (isNaN(amount) || amount <= 0) {
-        await this.dialogService.warning('Please enter a valid amount greater than 0.');
-        return;
-      }
-
-      // Final category validation before saving
-      const categoryValidation = this.validateCategoryExists(this.newExpense.categoryId);
-      if (!categoryValidation.exists) {
-        if (categoryValidation.wasDeleted) {
-          await this.dialogService.error(
-            'The selected category no longer exists. It may have been deleted. Please select a different category.',
-            'Category Deleted'
-          );
-        } else {
-          await this.dialogService.error(
-            'Invalid category selected. Please select a valid category from the list.',
-            'Invalid Category'
-          );
-        }
-        this.newExpense.categoryId = '';
-        return;
-      }
-
-      const expenseData: Omit<Expense, 'id'> = {
-        description: this.newExpense.description,
-        amount: amount,
-        date: this.newExpense.date,
-        categoryId: this.newExpense.categoryId,
-        paymentMethod: this.newExpense.paymentMethod || 'Cash',
-        tags: this.newExpense.tags || [],
-        priority: this.newExpense.priority || 'medium',
-        notes: this.newExpense.notes || '',
-        location: this.newExpense.location || '',
-        receiptNumber: this.newExpense.receiptNumber || ''
-        // createdAt will be set by Firebase service
-      };
-
-      const id = await this.expenseService.add(expenseData);
-      
-      this.resetForm();
-      await this.dialogService.success('Expense added successfully!');
-      
-      // Check for achievements
-      await this.checkAchievements();
+      await this.expenseService.add(expenseData);
     } catch (error) {
       console.error('Error adding expense:', error);
-      await this.dialogService.error('Error adding expense. Please try again.');
+      const msg =
+        error instanceof Error && /timed out|network|offline/i.test(error.message)
+          ? error.message
+          : 'Error adding expense. Please check your connection and try again.';
+      await this.dialogService.error(msg);
+      return;
+    }
+
+    this.resetForm();
+    await this.dialogService.success('Expense added successfully!');
+
+    try {
+      await this.checkAchievements();
+    } catch (error) {
+      console.warn('Achievement check failed after add:', error);
     }
   }
 
@@ -1405,6 +1420,20 @@ export class ExpensesComponent implements OnInit, OnDestroy {
   getCategoryName(id: string): string {
     const category = this.categoryMap.get(id); // Use Map for O(1) lookup
     return category?.name || 'Unknown';
+  }
+
+  getPageTitle(): string {
+    if (this.filterCategory && this.getCategoryName(this.filterCategory)) {
+      return `${this.getCategoryName(this.filterCategory)} Expenses`;
+    }
+    return '💸 Expenses';
+  }
+
+  getPageSubtitle(): string {
+    if (this.filterCategory && this.getCategoryName(this.filterCategory)) {
+      return `Viewing expenses for ${this.getCategoryName(this.filterCategory)}`;
+    }
+    return 'Track and manage your daily expenses';
   }
 
   getCategoryColor(id: string): string {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ScrollService } from './core/services/scroll.service';
@@ -55,13 +55,13 @@ import { take, filter } from 'rxjs/operators';
 
     /* Header */
     .app-header {
-      background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+      background: var(--gradient-brand-header);
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
-      z-index: 100;
+      z-index: 500;
       padding: 0;
       transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       transform: translateY(0);
@@ -95,15 +95,24 @@ import { take, filter } from 'rxjs/operators';
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s ease;
+      transition: background 0.2s ease;
       min-width: 44px;
       min-height: 44px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+      z-index: 2;
     }
 
+  @media (hover: hover) and (pointer: fine) {
     .sidebar-toggle:hover {
       background: rgba(255, 255, 255, 0.3);
-      transform: scale(1.05);
     }
+  }
+
+  .sidebar-toggle:active {
+    background: rgba(255, 255, 255, 0.35);
+  }
 
     /* Hide sidebar toggle on desktop when nav is visible */
     @media (min-width: 769px) {
@@ -232,19 +241,20 @@ import { take, filter } from 'rxjs/operators';
       min-height: 100vh;
       max-height: 100vh;
       background: rgba(0, 0, 0, 0.5);
-      z-index: 200;
+      z-index: 450;
       backdrop-filter: blur(4px);
       padding-top: env(safe-area-inset-top);
       box-sizing: border-box;
       opacity: 0;
       visibility: hidden;
-      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-                  visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
     }
 
     .sidebar-overlay.sidebar-overlay-visible {
       opacity: 1;
       visibility: visible;
+      pointer-events: auto;
     }
 
     .sidebar {
@@ -257,9 +267,9 @@ import { take, filter } from 'rxjs/operators';
       max-height: 100vh;
       background: linear-gradient(135deg, #ff8c42 0%, #ffa726 50%, #ffcc02 100%);
       box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
-      z-index: 300;
+      z-index: 460;
       transform: translate3d(-100%, 0, 0);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: transform 0.25s ease;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -343,6 +353,7 @@ import { take, filter } from 'rxjs/operators';
     .main-content.content-blurred {
       filter: blur(2px);
       pointer-events: none;
+      user-select: none;
     }
 
     .content-container {
@@ -474,7 +485,8 @@ export class App implements OnInit, OnDestroy {
     private scrollService: ScrollService,
     private authService: AuthService,
     private router: Router,
-    private routeLoadingService: RouteLoadingService
+    private routeLoadingService: RouteLoadingService,
+    private cdr: ChangeDetectorRef
   ) {
     // Restore the last visited route on app initialization
     this.restoreLastRoute();
@@ -503,23 +515,34 @@ export class App implements OnInit, OnDestroy {
 
   private setupScrollListener() {
     this.scrollHandler = () => {
+      // Auto-hiding the header on mobile made the menu button easy to miss (off-screen).
+      if (this.isMobileViewport()) {
+        if (this.headerHidden) {
+          this.headerHidden = false;
+          this.cdr.markForCheck();
+        }
+        return;
+      }
+
       const currentScrollY = window.scrollY || window.pageYOffset;
-      
-      // Only trigger if scroll amount is significant
+
       if (Math.abs(currentScrollY - this.lastScrollY) > this.scrollThreshold) {
         if (currentScrollY > this.lastScrollY && currentScrollY > 100) {
-          // Scrolling down and not at the top - hide header
           this.headerHidden = true;
         } else if (currentScrollY < this.lastScrollY) {
-          // Scrolling up - show header
           this.headerHidden = false;
         }
-        
+
         this.lastScrollY = currentScrollY;
+        this.cdr.markForCheck();
       }
     };
 
     window.addEventListener('scroll', this.scrollHandler, { passive: true });
+  }
+
+  private isMobileViewport(): boolean {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
   }
 
   private removeScrollListener() {
@@ -529,19 +552,23 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
-  toggleSidebar() {
+  toggleSidebar(event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    this.headerHidden = false;
     this.sidebarOpen = !this.sidebarOpen;
-    
-    if (this.sidebarOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = this.sidebarOpen ? 'hidden' : '';
+    this.cdr.markForCheck();
   }
 
   closeSidebar() {
+    if (!this.sidebarOpen) {
+      return;
+    }
     this.sidebarOpen = false;
     document.body.style.overflow = '';
+    this.cdr.markForCheck();
   }
 
   async signOut() {
@@ -569,12 +596,10 @@ export class App implements OnInit, OnDestroy {
         filter(user => user !== undefined),
         take(1)
       ).subscribe(user => {
-        if (user && this.router.url === '/dashboard') {
-          // Only restore route if we're currently on dashboard (initial load)
-          // Use setTimeout to ensure navigation happens after route initialization
-          setTimeout(() => {
-            this.router.navigate([lastRoute]);
-          }, 100);
+        const url = this.router.url.split('?')[0];
+        const isDefaultEntry = url === '/' || url === '/dashboard' || url === '';
+        if (user && isDefaultEntry && lastRoute !== url) {
+          this.router.navigateByUrl(lastRoute, { replaceUrl: true });
         }
       });
     }

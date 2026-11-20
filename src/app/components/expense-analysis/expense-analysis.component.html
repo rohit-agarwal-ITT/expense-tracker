@@ -1,19 +1,14 @@
-<div class="analysis-container">
-  <!-- Header Section -->
-  <div class="analysis-header">
-    <div class="header-content">
-      <div class="header-left">
-        <h1 class="analysis-title">📊 Expense Analysis</h1>
-        <p class="analysis-subtitle">Detailed category-wise spending analysis across months</p>
-      </div>
-      <div class="header-actions">
-        <button class="action-btn primary" (click)="exportAnalysis()">
-          <span class="action-icon">📥</span>
-          <span class="action-text">Export Analysis</span>
-        </button>
-      </div>
+<div class="analysis-container page-shell">
+  <app-page-header
+    title="📊 Expense Analysis"
+    subtitle="Detailed category-wise spending analysis across months">
+    <div headerActions>
+      <button class="action-btn primary" (click)="exportAnalysis()">
+        <span class="action-icon">📥</span>
+        <span class="action-text">Export Analysis</span>
+      </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Loading Spinner -->
   <app-loading 

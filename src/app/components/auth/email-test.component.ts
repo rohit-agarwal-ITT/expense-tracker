@@ -8,9 +8,12 @@ import { AuthService } from '../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="email-test-container">
-      <div class="email-test-card">
-        <h2>Email Test & Debug</h2>
+    <div class="auth-page">
+      <div class="auth-card auth-card--wide" style="max-width: 800px;">
+        <div class="auth-header">
+          <h1 class="auth-brand-title">Email Test & Debug</h1>
+          <p class="auth-subtitle">Developer utility for testing password reset emails</p>
+        </div>
         
         <div class="debug-info">
           <h3>Firebase Configuration</h3>
@@ -19,23 +22,25 @@ import { AuthService } from '../../core/services/auth.service';
           <p><strong>Current User:</strong> {{ getCurrentUserInfo() }}</p>
         </div>
 
-        <div class="test-form">
+        <div class="test-form auth-form">
           <h3>Test Password Reset</h3>
           <div class="form-group">
-            <label>Email Address:</label>
-            <input 
-              type="email" 
-              [(ngModel)]="testEmail" 
+            <label class="form-label">Email Address</label>
+            <input
+              type="email"
+              [(ngModel)]="testEmail"
               placeholder="Enter email to test"
               class="form-control">
           </div>
-          
-          <button 
-            (click)="testPasswordReset()" 
-            [disabled]="testing"
-            class="btn-test">
-            {{ testing ? 'Testing...' : 'Test Password Reset' }}
-          </button>
+
+          <div class="auth-actions">
+            <button
+              (click)="testPasswordReset()"
+              [disabled]="testing"
+              class="auth-btn-primary">
+              {{ testing ? 'Testing...' : 'Test Password Reset' }}
+            </button>
+          </div>
         </div>
 
         <div class="results" *ngIf="testResults.length > 0">
@@ -49,7 +54,7 @@ import { AuthService } from '../../core/services/auth.service';
           </div>
         </div>
 
-        <div class="troubleshooting">
+        <div class="auth-tips">
           <h3>Common Issues & Solutions</h3>
           <ul>
             <li><strong>No account found:</strong> Email doesn't exist in Firebase Auth</li>
@@ -62,127 +67,54 @@ import { AuthService } from '../../core/services/auth.service';
     </div>
   `,
   styles: [`
-    .email-test-container {
-      padding: 2rem;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-
-    .email-test-card {
-      background: white;
-      border-radius: 12px;
-      padding: 2rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-
     .debug-info {
-      background: #f8f9fa;
-      padding: 1rem;
-      border-radius: 8px;
-      margin-bottom: 1.5rem;
+      background: var(--bg-secondary);
+      padding: var(--space-4);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-6);
     }
 
     .debug-info h3 {
       margin-top: 0;
-      color: #333;
+      color: var(--text-primary);
     }
 
     .debug-info p {
-      margin: 0.5rem 0;
+      margin: var(--space-2) 0;
       font-family: monospace;
-    }
-
-    .test-form {
-      margin-bottom: 1.5rem;
-    }
-
-    .form-group {
-      margin-bottom: 1rem;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-    }
-
-    .form-control {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 1rem;
-    }
-
-    .btn-test {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-
-    .btn-test:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+      font-size: var(--text-sm);
     }
 
     .results {
-      margin-top: 1.5rem;
+      margin-top: var(--space-6);
     }
 
     .result-item {
-      background: #f8f9fa;
-      padding: 1rem;
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-      border-left: 4px solid #007bff;
+      background: var(--bg-secondary);
+      padding: var(--space-4);
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-2);
+      border-left: 4px solid var(--primary);
     }
 
     .result-time {
-      font-size: 0.8rem;
-      color: #666;
-      margin-bottom: 0.5rem;
+      font-size: var(--text-xs);
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
     }
 
     .result-status {
-      font-weight: 600;
-      margin-bottom: 0.5rem;
+      font-weight: var(--font-weight-semibold);
+      margin-bottom: var(--space-2);
     }
 
-    .result-status.success {
-      color: #28a745;
-    }
-
-    .result-status.error {
-      color: #dc3545;
-    }
+    .result-status.success { color: var(--accent-dark); }
+    .result-status.error { color: var(--highlight-dark); }
 
     .result-message {
       font-family: monospace;
-      font-size: 0.9rem;
+      font-size: var(--text-sm);
       white-space: pre-wrap;
-    }
-
-    .troubleshooting {
-      margin-top: 1.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #eee;
-    }
-
-    .troubleshooting ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    .troubleshooting li {
-      margin-bottom: 0.5rem;
-      padding: 0.5rem;
-      background: #fff3cd;
-      border-radius: 4px;
-      border-left: 4px solid #ffc107;
     }
   `]
 })

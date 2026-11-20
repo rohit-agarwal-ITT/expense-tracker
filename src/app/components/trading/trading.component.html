@@ -1,18 +1,9 @@
-<div class="container-fluid px-4 py-3">
-  <!-- Page Header -->
-  <div class="page-header mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-      <div class="d-flex align-items-center">
-        <div class="header-icon me-3">
-          <span class="fs-1">📈</span>
-        </div>
-        <div>
-          <h1 class="page-title mb-1">Trading</h1>
-          <p class="mb-0">Track your share market trades, profits, and losses</p>
-        </div>
-      </div>
-    </div>
-  </div>
+<div class="trading-page page-shell">
+  <app-page-header
+    title="📈 Trading"
+    subtitle="Track your share market trades, profits, and losses"
+    [hasActions]="false">
+  </app-page-header>
 
   <!-- Loading Spinner -->
   <app-loading 

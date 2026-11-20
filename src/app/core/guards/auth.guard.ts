@@ -13,6 +13,11 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   canActivate() {
+    const user = this.authService.getCurrentUser();
+    if (user) {
+      return true;
+    }
+
     return this.authService.currentUser$.pipe(
       // Wait for Firebase to initialize auth state
       filter(user => user !== undefined),

@@ -8,15 +8,26 @@ import { FirebaseService } from '../../core/services/firebase.service';
 import { DialogService } from '../../core/services/dialog.service';
 import { ScrollService } from '../../core/services/scroll.service';
 import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
-import { formatIndianCurrency } from '../../core/utils/currency-format.util';
+import { LoadingComponent } from '../../shared/components/loading/loading.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { formatIndianCurrencyDisplay } from '../../core/utils/currency-format.util';
 import { Subscription, combineLatest } from 'rxjs';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
+import { deferHeavyWork } from '../../core/utils/defer-heavy-work.util';
+
+interface YearReportGroup {
+  year: number;
+  reports: any[];
+  totalAmount: number;
+  expenseCount: number;
+  monthCount: number;
+}
 
 @Component({
   selector: 'app-monthly-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, IndianCurrencyComponent],
+  imports: [CommonModule, FormsModule, RouterModule, IndianCurrencyComponent, LoadingComponent, PageHeaderComponent],
   templateUrl: './monthly-reports.component.html',
   styleUrls: ['./monthly-reports.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -39,9 +50,6 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
   // Toggle state for trend indicators - per report card
   trendDisplayModes: { [monthKey: string]: 'percentage' | 'amount' } = {};
 
-  // View modes
-  viewMode: 'grid' | 'list' = 'grid';
-
   // Expense sorting
   expenseSortBy: 'date' | 'amount' | 'category' = 'date';
   expenseSortOrder: 'asc' | 'desc' = 'desc';
@@ -58,7 +66,17 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
   spendingTrend: 'increasing' | 'decreasing' | 'stable' = 'stable';
 
   // Loading states
-  isLoading: boolean = true;
+  isLoading = false;
+
+  // Cached display values (avoid repeated template method calls)
+  spendingTrendInfo: any = null;
+  reportTrendsMap: Record<string, any> = {};
+  topCategory: Category | null = null;
+  topCategoryPercentage = 0;
+  analyticsPeriod = '';
+  totalExpenseCount = 0;
+  yearReportGroups: YearReportGroup[] = [];
+
   private subscription: Subscription = new Subscription();
   private categoryMap: Map<string, Category> = new Map();
 
@@ -72,6 +90,8 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    this.isLoading = !this.firebaseService.hasCoreDataCached;
+
     // Subscribe to Firebase observables for real-time updates using combineLatest for efficiency
     this.subscription.add(
       combineLatest([
@@ -80,22 +100,23 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
       ]).subscribe(([expenses, categories]) => {
         this.expenses = expenses;
         this.categories = categories;
-        
-        // Build category map for O(1) lookups
+
         this.categoryMap.clear();
         this.categories.forEach(cat => this.categoryMap.set(cat.id, cat));
-        
-        // Generate monthly reports after loading data
-        this.generateMonthlyReports();
-        this.calculateAnalytics();
-        
-        this.cdr.markForCheck(); // Trigger change detection for OnPush
+        this.cdr.markForCheck();
+
+        deferHeavyWork(() => {
+          this.generateMonthlyReports();
+          this.calculateAnalytics();
+          this.refreshDisplayCache();
+          this.cdr.markForCheck();
+        });
       })
     );
 
     // Subscribe to loading state
     this.subscription.add(
-      this.firebaseService.loading$.subscribe(loading => {
+      this.firebaseService.getPageLoading$().subscribe((loading) => {
         this.isLoading = loading;
         this.cdr.markForCheck();
       })
@@ -126,11 +147,16 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
       const categoryBreakdown = this.getCategoryBreakdown(expenses);
       
       const [year, month] = monthKey.split('-');
-      const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      
+      const reportDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const monthName = reportDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const monthShortName = reportDate.toLocaleDateString('en-US', { month: 'short' });
+      const monthLongName = reportDate.toLocaleDateString('en-US', { month: 'long' });
+
       this.monthlyReports.push({
         monthKey,
         monthName,
+        monthShortName,
+        monthLongName,
         totalAmount,
         expenseCount: expenses.length,
         categoryBreakdown,
@@ -142,7 +168,10 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
   }
 
   calculateAnalytics() {
-    if (this.monthlyReports.length === 0) return;
+    if (this.monthlyReports.length === 0) {
+      this.refreshDisplayCache();
+      return;
+    }
 
     // Get filtered reports for analytics calculation
     const filteredReports = this.getFilteredReports();
@@ -164,15 +193,63 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
       else if (change < -10) this.spendingTrend = 'decreasing';
       else this.spendingTrend = 'stable';
     }
+
+    this.refreshDisplayCache();
+  }
+
+  private refreshDisplayCache(): void {
+    this.spendingTrendInfo = this.getSpendingTrend();
+    this.reportTrendsMap = {};
+    this.monthlyReports.forEach(report => {
+      this.reportTrendsMap[report.monthKey] = this.getReportTrend(report);
+    });
+    this.topCategory = this.getTopCategory() ?? null;
+    this.topCategoryPercentage = this.getTopCategoryPercentage();
+    this.analyticsPeriod = this.getAnalyticsPeriod();
+    this.totalExpenseCount = this.getTotalExpenses();
+    this.yearReportGroups = this.buildYearReportGroups();
+  }
+
+  private buildYearReportGroups(): YearReportGroup[] {
+    const grouped = new Map<number, any[]>();
+
+    for (const report of this.getFilteredReports()) {
+      const existing = grouped.get(report.year) ?? [];
+      existing.push(report);
+      grouped.set(report.year, existing);
+    }
+
+    return [...grouped.entries()]
+      .sort(([yearA], [yearB]) => yearB - yearA)
+      .map(([year, reports]) => ({
+        year,
+        reports,
+        totalAmount: reports.reduce((sum, report) => sum + report.totalAmount, 0),
+        expenseCount: reports.reduce((sum, report) => sum + report.expenseCount, 0),
+        monthCount: reports.length
+      }));
+  }
+
+  selectYearFilter(year: string): void {
+    this.filterYear = year;
+    this.onFilterChange();
+  }
+
+  showYearNavigation(): boolean {
+    return this.getAvailableYears().length > 1;
+  }
+
+  trackYearGroup(_index: number, group: YearReportGroup): number {
+    return group.year;
+  }
+
+  trackMonthReport(_index: number, report: { monthKey: string }): string {
+    return report.monthKey;
   }
 
   // New methods for enhanced UI
   toggleAnalytics(): void {
     this.showAnalytics = !this.showAnalytics;
-  }
-
-  setViewMode(mode: 'grid' | 'list'): void {
-    this.viewMode = mode;
   }
 
   getAnalyticsPeriod(): string {
@@ -263,7 +340,7 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
     const displayMode = this.trendDisplayModes[report.monthKey] || 'percentage';
     const displayText = displayMode === 'percentage' 
       ? `${change > 0 ? '+' : ''}${change.toFixed(1)}%`
-      : `${amountChange > 0 ? '+' : ''}${formatIndianCurrency(Math.abs(amountChange))}`;
+      : `${amountChange > 0 ? '+' : ''}${formatIndianCurrencyDisplay(Math.abs(amountChange), { abbreviated: true })}`;
     
 
     if (change > 50) {
@@ -1022,6 +1099,9 @@ export class MonthlyReportsComponent implements OnInit, OnDestroy {
       const globalMode = this.trendDisplayModes['analytics'] || 'percentage';
       this.trendDisplayModes['analytics'] = globalMode === 'percentage' ? 'amount' : 'percentage';
     }
+
+    this.refreshDisplayCache();
+    this.cdr.markForCheck();
   }
 
   getFilteredExpenses(): Expense[] {

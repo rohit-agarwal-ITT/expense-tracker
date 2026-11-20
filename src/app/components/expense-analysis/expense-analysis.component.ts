@@ -3,13 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { BaseChartDirective } from 'ng2-charts';
-import { Chart, registerables } from 'chart.js';
 import { Subject, Subscription, combineLatest } from 'rxjs';
 import { debounceTime, take } from 'rxjs/operators';
 import { isDevMode } from '@angular/core';
 
-// Register Chart.js components
-Chart.register(...registerables);
 import { ExpenseService } from '../../core/services/expense.service';
 import { CategoryService } from '../../core/services/category.service';
 import { FirebaseService } from '../../core/services/firebase.service';
@@ -20,6 +17,8 @@ import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { deferHeavyWork } from '../../core/utils/defer-heavy-work.util';
 
 interface CategoryAnalysis {
   category: Category;
@@ -43,7 +42,7 @@ interface MonthlyData {
 @Component({
   selector: 'app-expense-analysis',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, LoadingComponent, BaseChartDirective, IndianCurrencyComponent],
+  imports: [CommonModule, FormsModule, RouterModule, LoadingComponent, BaseChartDirective, IndianCurrencyComponent, PageHeaderComponent],
   templateUrl: './expense-analysis.component.html',
   styleUrls: ['./expense-analysis.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -52,7 +51,7 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
   expenses: Expense[] = [];
   categories: Category[] = [];
   categoryAnalysis: CategoryAnalysis[] = [];
-  isLoading = true;
+  isLoading = false;
   
   // Filter options
   selectedStartDate = '';
@@ -118,8 +117,8 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.isLoading = !this.firebaseService.hasCoreDataCached;
     // Use Firebase observables for faster loading and real-time updates
-    // This uses already-loaded data if available and gets real-time updates
     this.loadDataFromObservables();
   }
 
@@ -178,24 +177,19 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
           }
         }
         
-        // Perform analysis whenever data changes
-        this.performAnalysis();
-        
-        // Invalidate cache when data changes
-        this.invalidateCache();
-        
-        // Update loading state
-        if (this.isLoading) {
-          this.isLoading = false;
-          this.cdr.markForCheck(); // Trigger change detection for OnPush
-        }
+        deferHeavyWork(() => {
+          this.performAnalysis();
+          this.invalidateCache();
+          if (this.isLoading) {
+            this.isLoading = false;
+          }
+          this.cdr.markForCheck();
+        });
       })
     );
-    
-    // Also subscribe to loading state
+
     this.dataSubscription.add(
-      this.firebaseService.loading$.subscribe(loading => {
-        // Only set loading to true if we haven't loaded data yet
+      this.firebaseService.getPageLoading$().subscribe((loading) => {
         if (!this.dataLoaded) {
           this.isLoading = loading;
           this.cdr.markForCheck();

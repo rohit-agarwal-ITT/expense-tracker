@@ -1,22 +1,15 @@
-<div class="categories-page">
-  <!-- Page Header -->
-  <div class="page-header">
-    <div class="header-content">
-      <div class="header-icon">📂</div>
-      <div class="header-text">
-        <h1 class="page-title">Categories</h1>
-        <p class="page-description">Manage your expense categories and organize your spending</p>
-      </div>
-    </div>
-  </div>
+<div class="categories-page page-shell">
+  <app-page-header
+    title="📂 Categories"
+    subtitle="Manage your expense categories and organize your spending"
+    [hasActions]="false">
+  </app-page-header>
 
-  <!-- Loading Spinner -->
-  <div class="loading-container" *ngIf="isLoading">
-    <div class="loading-spinner">
-      <div class="spinner"></div>
-      <p class="loading-text">Loading categories...</p>
-    </div>
-  </div>
+  <app-loading
+    *ngIf="isLoading"
+    message="Loading categories..."
+    type="card">
+  </app-loading>
 
   <!-- Analytics Overview -->
   <div class="analytics-section" *ngIf="categories.length > 0 && !isLoading">
@@ -69,13 +62,13 @@
     </div>
     <div class="card-body-modern">
       <form (ngSubmit)="addCategory()" class="add-category-form">
-        <div class="form-row">
-          <div class="form-group">
+        <div class="add-category-layout">
+          <div class="form-group form-group--name">
             <label for="categoryName" class="form-label">Category Name</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               id="categoryName"
-              [(ngModel)]="newCategory.name" 
+              [(ngModel)]="newCategory.name"
               name="categoryName"
               class="form-control"
               placeholder="Enter category name"
@@ -87,49 +80,65 @@
               Category name already exists!
             </div>
           </div>
-          
-          <div class="form-group">
-            <label for="categoryIcon" class="form-label">Icon</label>
-            <div class="icon-group">
-              <input 
-                type="text" 
-                id="categoryIcon"
-                [(ngModel)]="newCategory.icon" 
-                name="categoryIcon"
-                class="icon-input"
-                placeholder="📌"
-                maxlength="2">
-              <button type="button" class="btn-random-icon" (click)="setRandomIcon()">
-                <span class="random-icon">🎲</span>
-                Random
-              </button>
+
+          <div class="add-category-pickers">
+            <div class="form-group picker-group">
+              <label for="categoryIcon" class="form-label">Icon</label>
+              <div class="picker-control">
+                <input
+                  type="text"
+                  id="categoryIcon"
+                  [(ngModel)]="newCategory.icon"
+                  name="categoryIcon"
+                  class="icon-input"
+                  placeholder="📌"
+                  maxlength="2"
+                  aria-label="Category icon">
+                <button
+                  type="button"
+                  class="btn-picker-random"
+                  (click)="setRandomIcon()"
+                  title="Pick random icon"
+                  aria-label="Pick random icon">
+                  <span class="random-icon" aria-hidden="true">🎲</span>
+                  <span class="btn-picker-random__text">Random</span>
+                </button>
+              </div>
             </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="categoryColor" class="form-label">Color</label>
-            <div class="color-group">
-              <input 
-                type="color" 
-                id="categoryColor"
-                [(ngModel)]="newCategory.color" 
-                name="categoryColor"
-                class="color-input">
-              <button type="button" class="btn-random-color" (click)="setRandomColor()">
-                <span class="random-icon">🎲</span>
-                Random
-              </button>
+
+            <div class="form-group picker-group">
+              <label for="categoryColor" class="form-label">Color</label>
+              <div class="picker-control">
+                <input
+                  type="color"
+                  id="categoryColor"
+                  [(ngModel)]="newCategory.color"
+                  name="categoryColor"
+                  class="color-input"
+                  aria-label="Category color">
+                <button
+                  type="button"
+                  class="btn-picker-random"
+                  (click)="setRandomColor()"
+                  title="Pick random color"
+                  aria-label="Pick random color">
+                  <span class="random-icon" aria-hidden="true">🎲</span>
+                  <span class="btn-picker-random__text">Random</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="form-group" style="align-self: center;">
-            <button type="submit" class="btn-add-category" [disabled]="!newCategory.name.trim() || isDuplicateCategory">
-              <span class="btn-icon">➕</span>
+          <div class="form-actions">
+            <button
+              type="submit"
+              class="btn-add-category"
+              [disabled]="!newCategory.name.trim() || isDuplicateCategory">
+              <span class="btn-icon" aria-hidden="true">➕</span>
               <span class="btn-text">Add Category</span>
             </button>
           </div>
         </div>
-    
       </form>
     </div>
   </div>
@@ -210,27 +219,50 @@
     </div>
     
     <div class="categories-grid" *ngIf="getFilteredCategories().length > 0 && !isLoading">
-      <div class="category-card" 
+      <div class="category-card"
            *ngFor="let category of getFilteredCategories()"
            (click)="showCategoryExpenses(category, $event)"
-           [class.clickable]="true">
+           [class.clickable]="true"
+           [style.--category-accent]="category.color || '#6366f1'">
+        <div class="category-card__accent" aria-hidden="true"></div>
         <div class="category-content">
-          <div class="category-info">
-            <div class="category-color-indicator" [ngStyle]="{'background': category.color}"></div>
-            <div class="category-icon">{{category.icon}}</div>
-            <div class="category-name">{{category.name}}</div>
-            <div class="category-usage">
-              {{ getCategoryUsage(category.id) }} expenses
+          <div class="category-leading">
+            <div class="category-icon-wrap" aria-hidden="true">
+              <span class="category-icon">{{ category.icon }}</span>
+            </div>
+            <div class="category-identity">
+              <h4 class="category-name">{{ category.name }}</h4>
             </div>
           </div>
-          
+
+          <div class="category-metrics" (click)="$event.stopPropagation()">
+            <div class="metric-chip metric-chip--count">
+              <span class="metric-chip__glyph" aria-hidden="true">📋</span>
+              <div class="metric-chip__text">
+                <span class="metric-chip__value">{{ getCategoryUsage(category.id) }}</span>
+                <span class="metric-chip__label">
+                  {{ getCategoryUsage(category.id) === 1 ? 'Expense' : 'Expenses' }}
+                </span>
+              </div>
+            </div>
+            <div class="metric-chip metric-chip--amount">
+              <span class="metric-chip__glyph" aria-hidden="true">💰</span>
+              <div class="metric-chip__text">
+                <span class="metric-chip__value metric-chip__value--currency">
+                  <app-indian-currency [amount]="getCategoryTotalAmount(category.id)"></app-indian-currency>
+                </span>
+                <span class="metric-chip__label">Total spent</span>
+              </div>
+            </div>
+          </div>
+
           <div class="category-actions" (click)="$event.stopPropagation()">
-            <button class="btn-edit" (click)="updateCategory(category)" title="Edit category">
-              <span class="edit-icon">✏️</span>
+            <button type="button" class="btn-edit" (click)="updateCategory(category)" title="Edit category">
+              <span class="edit-icon" aria-hidden="true">✏️</span>
               <span class="edit-text">Edit</span>
             </button>
-            <button class="btn-delete" (click)="confirmDelete(category)" title="Delete category">
-              <span class="delete-icon">🗑️</span>
+            <button type="button" class="btn-delete" (click)="confirmDelete(category)" title="Delete category">
+              <span class="delete-icon" aria-hidden="true">🗑️</span>
               <span class="delete-text">Delete</span>
             </button>
           </div>

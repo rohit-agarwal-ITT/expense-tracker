@@ -2,21 +2,19 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BaseChartDirective } from 'ng2-charts';
-import { Chart, registerables } from 'chart.js';
 import { TradingService } from '../../core/services/trading.service';
 import { FirebaseService } from '../../core/services/firebase.service';
 import { DialogService } from '../../core/services/dialog.service';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { Subscription, combineLatest } from 'rxjs';
 import { Trade } from '../../core/models/trade.model';
-
-// Register Chart.js components
-Chart.register(...registerables);
+import { formatIndianCurrencyDisplay } from '../../core/utils/currency-format.util';
 
 @Component({
   selector: 'app-trading',
   standalone: true,
-  imports: [CommonModule, FormsModule, LoadingComponent, BaseChartDirective],
+  imports: [CommonModule, FormsModule, LoadingComponent, PageHeaderComponent, BaseChartDirective],
   templateUrl: './trading.component.html',
   styleUrls: ['./trading.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -78,7 +76,7 @@ export class TradingComponent implements OnInit, OnDestroy {
   dailyItemsPerPage: number = 10;
 
   // Loading states
-  isLoading: boolean = true;
+  isLoading = false;
   isSaving: boolean = false;
   isDeleting: boolean = false;
   deletingTradeIds: Set<string> = new Set();
@@ -142,6 +140,8 @@ export class TradingComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    this.isLoading = !this.firebaseService.hasTradesCached;
+
     // Trading component is completely independent from Expenses
     // It only subscribes to trades$ observable, not expenses$ or categories$
     // All trading data is stored in separate 'trades' collection in Firebase
@@ -152,12 +152,11 @@ export class TradingComponent implements OnInit, OnDestroy {
       this.availableYears.push(year.toString());
     }
     
-    // Ensure trades are loaded and real-time listener is set up
-    this.firebaseService.loadTrades().then(() => {
-      // Real-time listener will handle updates
-    }).catch(error => {
-      console.error('Error loading trades:', error);
-    });
+    if (!this.firebaseService.hasTradesCached) {
+      void this.firebaseService.loadTrades().catch((error) => {
+        console.error('Error loading trades:', error);
+      });
+    }
     
     // Subscribe to Firebase observables for real-time updates
     this.subscription.add(
@@ -170,13 +169,11 @@ export class TradingComponent implements OnInit, OnDestroy {
         this._cachedStatistics = null;
         // Force change detection to update statistics, list, and monthly summary
         this.cdr.markForCheck();
-        this.cdr.detectChanges();
       })
     );
 
-    // Subscribe to loading state
     this.subscription.add(
-      this.firebaseService.loading$.subscribe(loading => {
+      this.firebaseService.getPageLoading$({ requireTrades: true }).subscribe((loading) => {
         this.isLoading = loading;
         this.cdr.markForCheck();
       })
@@ -1287,10 +1284,12 @@ export class TradingComponent implements OnInit, OnDestroy {
     );
   }
 
-  // Format currency
+  // Format currency (same lakh abbreviation as app-indian-currency)
   formatCurrency(amount: number): string {
-    const absoluteAmount = Math.abs(amount);
-    return `₹${Math.round(absoluteAmount).toLocaleString('en-IN')}`;
+    return formatIndianCurrencyDisplay(amount, {
+      abbreviated: true,
+      maximumFractionDigits: 0
+    });
   }
 
   // Format percentage

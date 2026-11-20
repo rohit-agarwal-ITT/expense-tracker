@@ -19,7 +19,8 @@ import { Firestore } from '@angular/fire/firestore';
 import { Expense } from '../models/expense.model';
 import { Category } from '../models/category.model';
 import { Trade } from '../models/trade.model';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -43,6 +44,38 @@ export class FirebaseService {
   public trades$ = this.tradesSubject.asObservable();
   public userSettings$ = this.userSettingsSubject.asObservable();
   public loading$ = this.loadingSubject.asObservable();
+
+  /** True only during the first Firebase bootstrap while core data is still empty. */
+  get hasCoreDataCached(): boolean {
+    return (
+      this.expensesSubject.value.length > 0 || this.categoriesSubject.value.length > 0
+    );
+  }
+
+  get hasTradesCached(): boolean {
+    return this.tradesSubject.value.length > 0;
+  }
+
+  getPageLoading$(options: { requireTrades?: boolean } = {}): Observable<boolean> {
+    const { requireTrades = false } = options;
+    return combineLatest([
+      this.loading$,
+      this.expenses$,
+      this.categories$,
+      this.trades$
+    ]).pipe(
+      map(([loading, expenses, categories, trades]) => {
+        if (!loading) {
+          return false;
+        }
+        if (requireTrades) {
+          return trades.length === 0;
+        }
+        return expenses.length === 0 && categories.length === 0;
+      }),
+      distinctUntilChanged()
+    );
+  }
 
   constructor(private authService: AuthService) {
     // Subscribe to auth state changes to reload data when user changes
@@ -105,13 +138,19 @@ export class FirebaseService {
       orderBy('date', 'desc')
     );
     
-    this.expensesUnsubscribe = onSnapshot(expensesQuery, (querySnapshot) => {
-      const expenses: Expense[] = [];
-      querySnapshot.forEach((doc) => {
-        expenses.push({ id: doc.id, ...doc.data() } as Expense);
-      });
-      this.expensesSubject.next(expenses);
-    });
+    this.expensesUnsubscribe = onSnapshot(
+      expensesQuery,
+      (querySnapshot) => {
+        const expenses: Expense[] = [];
+        querySnapshot.forEach((doc) => {
+          expenses.push({ id: doc.id, ...doc.data() } as Expense);
+        });
+        this.expensesSubject.next(expenses);
+      },
+      (error) => {
+        console.error('Expenses real-time listener error:', error);
+      }
+    );
 
     // Set up real-time listener for categories
     const categoriesRef = collection(this.firestore, 'categories');
@@ -212,26 +251,66 @@ export class FirebaseService {
     }
   }
 
+  private async resolveUserId(timeoutMs = 8000): Promise<string> {
+    const immediate = this.authService.getCurrentUserId();
+    if (immediate) {
+      return immediate;
+    }
+
+    return new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        subscription.unsubscribe();
+        reject(new Error('User not authenticated. Please sign in again.'));
+      }, timeoutMs);
+
+      const subscription = this.authService.currentUser$.subscribe((user) => {
+        if (user === undefined) {
+          return;
+        }
+        clearTimeout(timer);
+        subscription.unsubscribe();
+        if (user) {
+          resolve(user.uid);
+        } else {
+          reject(new Error('User not authenticated. Please sign in again.'));
+        }
+      });
+    });
+  }
+
+  private withTimeout<T>(operation: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+
+      operation
+        .then((value) => {
+          clearTimeout(timer);
+          resolve(value);
+        })
+        .catch((error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
+    });
+  }
+
   async addExpense(expense: Omit<Expense, 'id'>): Promise<string> {
     try {
-      const userId = this.authService.getCurrentUserId();
-      
-      if (!userId) {
-        throw new Error('User not authenticated');
-      }
+      const userId = await this.resolveUserId();
 
       const expensesRef = collection(this.firestore, 'expenses');
-      const expenseWithUserId = { 
-        ...expense, 
+      const expenseWithUserId = {
+        ...expense,
         userId,
-        createdAt: new Date().toISOString() // Add creation timestamp
+        createdAt: new Date().toISOString()
       };
-      
-      const docRef = await addDoc(expensesRef, expenseWithUserId);
-      
-      // Real-time listener will automatically update the cache
-      // No need to manually update cache here to avoid duplicates
-      
+
+      const docRef = await this.withTimeout(
+        addDoc(expensesRef, expenseWithUserId),
+        30_000,
+        'Saving timed out. Check your connection and try again.'
+      );
+
       return docRef.id;
     } catch (error) {
       console.error('Error adding expense:', error);

@@ -6,6 +6,8 @@ import { FirebaseService } from '../../core/services/firebase.service';
 import { Category } from '../../core/models/category.model';
 import { Expense } from '../../core/models/expense.model';
 import { Subscription, combineLatest } from 'rxjs';
+import { LoadingComponent } from '../../shared/components/loading/loading.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 interface OrphanedCategorySummary {
   categoryId: string;
@@ -17,7 +19,7 @@ interface OrphanedCategorySummary {
 @Component({
   selector: 'app-expense-category-mapper',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LoadingComponent, PageHeaderComponent],
   templateUrl: './expense-category-mapper.component.html',
   styleUrls: ['./expense-category-mapper.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -26,7 +28,7 @@ export class ExpenseCategoryMapperComponent implements OnInit, OnDestroy {
   orphanedCategories: OrphanedCategorySummary[] = [];
   availableCategories: Category[] = [];
   mappings: CategoryMapping[] = [];
-  isLoading = true;
+  isLoading = false;
   isMapping = false;
   mappingResults: any = null;
   private subscription: Subscription = new Subscription();
@@ -38,6 +40,8 @@ export class ExpenseCategoryMapperComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    this.isLoading = !this.firebaseService.hasCoreDataCached;
+
     // Subscribe to Firebase observables for real-time updates
     this.subscription.add(
       combineLatest([
@@ -52,7 +56,7 @@ export class ExpenseCategoryMapperComponent implements OnInit, OnDestroy {
 
     // Subscribe to loading state
     this.subscription.add(
-      this.firebaseService.loading$.subscribe(loading => {
+      this.firebaseService.getPageLoading$().subscribe((loading) => {
         this.isLoading = loading;
         this.cdr.markForCheck();
       })

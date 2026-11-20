@@ -5,6 +5,10 @@ import { CategoryService } from '../../core/services/category.service';
 import { ExpenseService } from '../../core/services/expense.service';
 import { FirebaseService } from '../../core/services/firebase.service';
 import { DialogService } from '../../core/services/dialog.service';
+import { LoadingComponent } from '../../shared/components/loading/loading.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
+import { deferHeavyWork } from '../../core/utils/defer-heavy-work.util';
 import { Category } from '../../core/models/category.model';
 import { Expense } from '../../core/models/expense.model';
 import { Subscription, combineLatest } from 'rxjs';
@@ -12,7 +16,7 @@ import { Subscription, combineLatest } from 'rxjs';
 @Component({
   selector: 'app-categories',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LoadingComponent, PageHeaderComponent, IndianCurrencyComponent],
   templateUrl: './categories.component.html',
   styleUrls: ['./categories.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -47,8 +51,11 @@ export class CategoriesComponent implements OnInit, OnDestroy {
   leastUsedCategory: Category | null = null;
 
   // Loading states
-  isLoading: boolean = true;
+  isLoading = false;
   isUpdatingIcons: boolean = false;
+
+  /** Cached expense count and total amount per category id */
+  categoryStats: Record<string, { count: number; amount: number }> = {};
 
   private subscription: Subscription = new Subscription();
 
@@ -61,6 +68,8 @@ export class CategoriesComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    this.isLoading = !this.firebaseService.hasCoreDataCached;
+
     // Subscribe to Firebase observables for real-time updates using combineLatest for efficiency
     this.subscription.add(
       combineLatest([
@@ -69,14 +78,17 @@ export class CategoriesComponent implements OnInit, OnDestroy {
       ]).subscribe(([categories, expenses]) => {
         this.categories = categories;
         this.expenses = expenses;
-        this.calculateAnalytics();
-        this.cdr.markForCheck(); // Trigger change detection for OnPush
+        this.cdr.markForCheck();
+        deferHeavyWork(() => {
+          this.calculateAnalytics();
+          this.cdr.markForCheck();
+        });
       })
     );
 
     // Subscribe to loading state
     this.subscription.add(
-      this.firebaseService.loading$.subscribe(loading => {
+      this.firebaseService.getPageLoading$().subscribe((loading) => {
         this.isLoading = loading;
         this.cdr.markForCheck();
       })
@@ -106,6 +118,7 @@ export class CategoriesComponent implements OnInit, OnDestroy {
   }
 
   calculateAnalytics() {
+    this.refreshCategoryStats();
     this.totalCategories = this.categories.length;
     
     // Calculate usage statistics
@@ -121,17 +134,33 @@ export class CategoriesComponent implements OnInit, OnDestroy {
     }
   }
 
+  private refreshCategoryStats(): void {
+    const stats: Record<string, { count: number; amount: number }> = {};
+
+    for (const expense of this.expenses) {
+      if (!expense.categoryId) {
+        continue;
+      }
+      if (!stats[expense.categoryId]) {
+        stats[expense.categoryId] = { count: 0, amount: 0 };
+      }
+      stats[expense.categoryId].count += 1;
+      stats[expense.categoryId].amount += expense.amount;
+    }
+
+    this.categoryStats = stats;
+  }
+
   getCategoryUsageStats(): { [key: string]: number } {
     const usage: { [key: string]: number } = {};
-    
-    // Count how many times each category is used in expenses
-    this.expenses.forEach(expense => {
-      if (expense.categoryId) {
-        usage[expense.categoryId] = (usage[expense.categoryId] || 0) + 1;
-      }
-    });
-    
+    for (const [id, stat] of Object.entries(this.categoryStats)) {
+      usage[id] = stat.count;
+    }
     return usage;
+  }
+
+  getCategoryTotalAmount(categoryId: string): number {
+    return this.categoryStats[categoryId]?.amount ?? 0;
   }
 
   async initializeDefaultCategories() {
@@ -309,10 +338,8 @@ export class CategoriesComponent implements OnInit, OnDestroy {
           bValue = usageStats[b.id] || 0;
           break;
         case 'amount':
-          const categoryExpensesA = this.getExpensesForCategory(a.id);
-          const categoryExpensesB = this.getExpensesForCategory(b.id);
-          aValue = categoryExpensesA.reduce((sum, expense) => sum + expense.amount, 0);
-          bValue = categoryExpensesB.reduce((sum, expense) => sum + expense.amount, 0);
+          aValue = this.categoryStats[a.id]?.amount ?? 0;
+          bValue = this.categoryStats[b.id]?.amount ?? 0;
           break;
         default:
           aValue = a.name.toLowerCase();
@@ -330,8 +357,7 @@ export class CategoriesComponent implements OnInit, OnDestroy {
   }
 
   getCategoryUsage(categoryId: string): number {
-    const usageStats = this.getCategoryUsageStats();
-    return usageStats[categoryId] || 0;
+    return this.categoryStats[categoryId]?.count ?? 0;
   }
 
   clearSearch() {

@@ -70,7 +70,7 @@ import { CommonModule } from '@angular/common';
 
     .loading-spinner {
       text-align: center;
-      color: #666;
+      color: var(--text-secondary, #666);
       position: relative;
       z-index: 100000;
     }
@@ -78,8 +78,8 @@ import { CommonModule } from '@angular/common';
     .spinner {
       width: 40px;
       height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #9b6b9b;
+      border: 4px solid var(--border-light, #f3f3f3);
+      border-top: 4px solid var(--primary, #6366f1);
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 1rem;
@@ -107,10 +107,10 @@ import { CommonModule } from '@angular/common';
     }
 
     .loading-text {
-      font-size: 1.1rem;
-      font-weight: 500;
+      font-size: var(--text-lg, 1.1rem);
+      font-weight: var(--font-weight-medium, 500);
       margin: 0;
-      color: #666;
+      color: var(--text-secondary, #666);
     }
 
     .button-text {

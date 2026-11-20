@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Subscription } from 'rxjs';
+import { filter, take } from 'rxjs/operators';
 
 export interface DialogConfig {
   title: string;
@@ -11,9 +12,8 @@ export interface DialogConfig {
   inputValue?: string;
   inputPlaceholder?: string;
   inputLabel?: string;
-  options?: Array<{value: string, label: string, icon?: string}>;
+  options?: Array<{ value: string; label: string; icon?: string }>;
   selectedValue?: string;
-  // For multi-field forms
   fields?: Array<{
     name: string;
     label: string;
@@ -21,9 +21,8 @@ export interface DialogConfig {
     value: string;
     placeholder?: string;
     required?: boolean;
-    options?: Array<{value: string, label: string}>; // For select type fields
+    options?: Array<{ value: string; label: string }>;
   }>;
-  // For expense lists
   expenses?: Array<{
     id: string;
     description: string;
@@ -31,7 +30,6 @@ export interface DialogConfig {
     date: string;
     categoryId: string;
   }>;
-  // For trade lists
   trades?: Array<{
     id: string;
     symbol: string;
@@ -65,211 +63,154 @@ export class DialogService {
   public dialog$ = this.dialogSubject.asObservable();
   public result$ = this.resultSubject.asObservable();
 
-  // Simple alert dialog
+  /** Only one dialog may wait for a result at a time (avoids stale popups after tab switch). */
+  private activeWaiter?: Subscription;
+  private releasePendingWait?: (result: DialogResult) => void;
+
+  private dismissActiveDialog(releaseValue?: DialogResult): void {
+    if (this.releasePendingWait) {
+      this.releasePendingWait(releaseValue ?? { confirmed: false });
+      this.releasePendingWait = undefined;
+    }
+    this.activeWaiter?.unsubscribe();
+    this.activeWaiter = undefined;
+    this.dialogSubject.next(null);
+    this.resultSubject.next(null);
+  }
+
+  private openDialog(config: DialogConfig): Promise<DialogResult> {
+    this.dismissActiveDialog();
+    this.dialogSubject.next(config);
+
+    return new Promise<DialogResult>((resolve) => {
+      this.releasePendingWait = resolve;
+
+      this.activeWaiter = this.resultSubject
+        .pipe(
+          filter((r): r is DialogResult => r !== null),
+          take(1)
+        )
+        .subscribe((result) => {
+          this.releasePendingWait = undefined;
+          this.activeWaiter = undefined;
+          this.dialogSubject.next(null);
+          this.resultSubject.next(null);
+          resolve(result);
+        });
+    });
+  }
+
   alert(message: string, title: string = 'Information'): Promise<void> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title,
-        message,
-        type: 'info',
-        confirmText: 'OK'
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve();
-        }
-      });
-    });
+    return this.openDialog({
+      title,
+      message,
+      type: 'info',
+      confirmText: 'OK'
+    }).then(() => undefined);
   }
 
-  // Success dialog
   success(message: string, title: string = 'Success'): Promise<void> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title,
-        message,
-        type: 'success',
-        confirmText: 'OK'
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve();
-        }
-      });
-    });
+    return this.openDialog({
+      title,
+      message,
+      type: 'success',
+      confirmText: 'OK'
+    }).then(() => undefined);
   }
 
-  // Warning dialog
   warning(message: string, title: string = 'Warning'): Promise<void> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title,
-        message,
-        type: 'warning',
-        confirmText: 'OK'
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve();
-        }
-      });
-    });
+    return this.openDialog({
+      title,
+      message,
+      type: 'warning',
+      confirmText: 'OK'
+    }).then(() => undefined);
   }
 
-  // Error dialog
   error(message: string, title: string = 'Error'): Promise<void> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title,
-        message,
-        type: 'error',
-        confirmText: 'OK'
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve();
-        }
-      });
-    });
+    return this.openDialog({
+      title,
+      message,
+      type: 'error',
+      confirmText: 'OK'
+    }).then(() => undefined);
   }
 
-  // Confirmation dialog
   confirm(message: string, title: string = 'Confirm'): Promise<boolean> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title,
-        message,
-        type: 'confirm',
-        confirmText: 'Yes',
-        cancelText: 'No'
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve(result.confirmed);
-        }
-      });
-    });
+    return this.openDialog({
+      title,
+      message,
+      type: 'confirm',
+      confirmText: 'Yes',
+      cancelText: 'No'
+    }).then((result) => result.confirmed);
   }
 
-  // Prompt dialog for text input
   prompt(
-    message: string, 
+    message: string,
     title: string = 'Input Required',
     defaultValue: string = '',
     inputType: 'text' | 'number' | 'date' | 'email' | 'password' = 'text',
     placeholder: string = '',
     label: string = ''
   ): Promise<string | null> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title,
-        message,
-        type: 'confirm',
-        confirmText: 'OK',
-        cancelText: 'Cancel',
-        inputType,
-        inputValue: defaultValue,
-        inputPlaceholder: placeholder,
-        inputLabel: label
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve(result.confirmed ? result.value || null : null);
-        }
-      });
-    });
+    return this.openDialog({
+      title,
+      message,
+      type: 'confirm',
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      inputType,
+      inputValue: defaultValue,
+      inputPlaceholder: placeholder,
+      inputLabel: label
+    }).then((result) => (result.confirmed ? result.value ?? null : null));
   }
 
-  // Selection dialog for choosing from options
   select(
     message: string,
     title: string = 'Select Option',
-    options: Array<{value: string, label: string, icon?: string}>,
+    options: Array<{ value: string; label: string; icon?: string }>,
     selectedValue?: string
   ): Promise<string | null> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title,
-        message,
-        type: 'confirm',
-        confirmText: 'OK',
-        cancelText: 'Cancel',
-        options,
-        selectedValue
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve(result.confirmed ? result.selectedOption || null : null);
-        }
-      });
-    });
+    return this.openDialog({
+      title,
+      message,
+      type: 'confirm',
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      options,
+      selectedValue
+    }).then((result) => (result.confirmed ? result.selectedOption ?? null : null));
   }
 
-  // Multi-field form dialog
-  form(fields: Array<{
-    name: string;
-    label: string;
-    type: 'text' | 'number' | 'date' | 'email' | 'password' | 'color' | 'select';
-    value: string;
-    placeholder?: string;
-    required?: boolean;
-    options?: Array<{value: string, label: string}>;
-  }>, title: string = 'Edit', message: string = 'Please fill in the details:'): Promise<{ [key: string]: string } | null> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title,
-        message,
-        type: 'confirm',
-        fields,
-        confirmText: 'Save',
-        cancelText: 'Cancel'
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve(result.confirmed ? result.fieldValues || null : null);
-        }
-      });
-    });
+  form(
+    fields: Array<{
+      name: string;
+      label: string;
+      type: 'text' | 'number' | 'date' | 'email' | 'password' | 'color' | 'select';
+      value: string;
+      placeholder?: string;
+      required?: boolean;
+      options?: Array<{ value: string; label: string }>;
+    }>,
+    title: string = 'Edit',
+    message: string = 'Please fill in the details:'
+  ): Promise<{ [key: string]: string } | null> {
+    return this.openDialog({
+      title,
+      message,
+      type: 'confirm',
+      fields,
+      confirmText: 'Save',
+      cancelText: 'Cancel'
+    }).then((result) => (result.confirmed ? result.fieldValues ?? null : null));
   }
 
-  // Method to handle dialog result
   handleResult(result: DialogResult): void {
     this.resultSubject.next(result);
   }
 
-  // Method to show expense list
   showExpenseList(
     expenses: Array<{
       id: string;
@@ -284,31 +225,19 @@ export class DialogService {
     message?: string,
     totalAmount?: number
   ): Promise<void> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title: categoryName,
-        message: message || '',
-        type: 'list',
-        confirmText: 'Close',
-        expenses,
-        categoryName,
-        categoryIcon,
-        categoryColor,
-        totalAmount
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve();
-        }
-      });
-    });
+    return this.openDialog({
+      title: categoryName,
+      message: message || '',
+      type: 'list',
+      confirmText: 'Close',
+      expenses,
+      categoryName,
+      categoryIcon,
+      categoryColor,
+      totalAmount
+    }).then(() => undefined);
   }
 
-  // Method to show trade list
   showTradeList(
     trades: Array<{
       id: string;
@@ -324,30 +253,17 @@ export class DialogService {
     message?: string,
     totalAmount?: number
   ): Promise<void> {
-    return new Promise((resolve) => {
-      this.dialogSubject.next({
-        title,
-        message: message || '',
-        type: 'list',
-        confirmText: 'Close',
-        trades,
-        totalAmount
-      });
-
-      const subscription = this.result$.subscribe(result => {
-        if (result) {
-          subscription.unsubscribe();
-          this.dialogSubject.next(null);
-          this.resultSubject.next(null);
-          resolve();
-        }
-      });
-    });
+    return this.openDialog({
+      title,
+      message: message || '',
+      type: 'list',
+      confirmText: 'Close',
+      trades,
+      totalAmount
+    }).then(() => undefined);
   }
 
-  // Method to close dialog
   close(): void {
-    this.dialogSubject.next(null);
-    this.resultSubject.next(null);
+    this.dismissActiveDialog();
   }
 }

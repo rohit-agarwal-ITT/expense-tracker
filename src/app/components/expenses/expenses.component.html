@@ -1,40 +1,27 @@
-<div class="container-fluid px-4 py-3">
-  <!-- Page Header -->
-  <div class="page-header mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-      <div class="d-flex align-items-center">
-        <div class="header-icon me-3">
-          <span class="fs-1">💸</span>
-        </div>
-        <div>
-          <h1 class="page-title mb-1">
-            {{ filterCategory && getCategoryName(filterCategory) ? getCategoryName(filterCategory) + ' Expenses' : 'Expenses' }}
-          </h1>
-          <p class="mb-0">
-            {{ filterCategory && getCategoryName(filterCategory) ? 'Viewing expenses for ' + getCategoryName(filterCategory) : 'Track and manage your daily expenses' }}
-          </p>
-        </div>
-      </div>
-      <div class="header-actions" *ngIf="!isLoading && getFilteredExpenses().length > 0">
-        <button 
-          class="btn-header-action" 
-          (click)="exportToPDF()" 
-          title="Download PDF"
-          [disabled]="isGeneratingPDF || isPrinting">
-          <span class="btn-icon">📄</span>
-          <span class="btn-text">PDF</span>
-        </button>
-        <button 
-          class="btn-header-action" 
-          (click)="printExpenses()" 
-          title="Print Expenses"
-          [disabled]="isGeneratingPDF || isPrinting">
-          <span class="btn-icon">🖨️</span>
-          <span class="btn-text">Print</span>
-        </button>
-      </div>
+<div class="expenses-page page-shell">
+  <app-page-header
+    [title]="getPageTitle()"
+    [subtitle]="getPageSubtitle()"
+    [hasActions]="!isLoading && getFilteredExpenses().length > 0">
+    <div headerActions class="header-actions">
+      <button
+        class="action-btn secondary"
+        (click)="exportToPDF()"
+        title="Download PDF"
+        [disabled]="isGeneratingPDF || isPrinting">
+        <span class="action-icon">📄</span>
+        <span class="action-text">PDF</span>
+      </button>
+      <button
+        class="action-btn secondary"
+        (click)="printExpenses()"
+        title="Print Expenses"
+        [disabled]="isGeneratingPDF || isPrinting">
+        <span class="action-icon">🖨️</span>
+        <span class="action-text">Print</span>
+      </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Loading Spinner -->
   <app-loading 

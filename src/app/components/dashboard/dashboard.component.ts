@@ -1,17 +1,16 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
-import { ExpenseService } from '../../core/services/expense.service';
-import { CategoryService } from '../../core/services/category.service';
+import { RouterModule } from '@angular/router';
 import { FirebaseService } from '../../core/services/firebase.service';
 import { FilterStateService } from '../../core/services/filter-state.service';
-import { DialogService } from '../../core/services/dialog.service';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { IndianCurrencyComponent } from '../../shared/components/indian-currency/indian-currency.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { Subscription, combineLatest } from 'rxjs';
 import { Expense } from '../../core/models/expense.model';
 import { Category } from '../../core/models/category.model';
+import { deferHeavyWork } from '../../core/utils/defer-heavy-work.util';
 
 interface Alert {
   type: 'success' | 'error' | 'warning' | 'info';
@@ -25,12 +24,6 @@ interface BudgetProgress {
   percentage: number;
   remaining: number;
   status: 'good' | 'warning' | 'danger';
-}
-
-interface CategoryTrend {
-  direction: 'up' | 'down' | 'stable';
-  percentage: number;
-  icon: string;
 }
 
 interface MonthlyTrend {
@@ -48,7 +41,7 @@ interface Insight {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, LoadingComponent, IndianCurrencyComponent],
+  imports: [CommonModule, FormsModule, RouterModule, LoadingComponent, IndianCurrencyComponent, PageHeaderComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -72,12 +65,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   selectedMonthOnly: string = '';
   selectedYearOnly: string = '';
   
-  // Category breakdown
-  categoryBreakdown: any[] = [];
-  
-  // Recent expenses
-  recentExpenses: Expense[] = [];
-  
   // Monthly data
   currentMonthTotal: number = 0;
   
@@ -95,27 +82,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
     trend: 'up' | 'down' | 'stable';
     icon: string;
   }[] = [];
+
+  spendingAnalytics: any = null;
+  smartRecommendations: { title: string; description: string; priority: 'high' | 'medium' | 'low' }[] = [];
   
   // Loading states
-  isLoading: boolean = true;
-  isEditingExpense: boolean = false;
-  isDeletingExpense: boolean = false;
+  isLoading = false;
   
   private subscription: Subscription = new Subscription();
   private categoryMap: Map<string, Category> = new Map();
-  private calculationCache: { expenses: Expense[], categories: Category[], totals?: any, breakdown?: any[] } | null = null;
+  private calculationCache: { expenses: Expense[], categories: Category[] } | null = null;
 
   constructor(
-    private expenseService: ExpenseService,
-    private categoryService: CategoryService,
     private firebaseService: FirebaseService,
     private filterStateService: FilterStateService,
-    private dialogService: DialogService,
-    private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
+    this.isLoading = !this.firebaseService.hasCoreDataCached;
+
     // Load filter state from service
     this.loadFilterState();
     
@@ -133,40 +119,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ]).subscribe(([expenses, categories]) => {
         this.expenses = expenses;
         this.categories = categories;
-        
-        // Build category map for O(1) lookups
+
         this.categoryMap.clear();
         this.categories.forEach(cat => this.categoryMap.set(cat.id, cat));
-        
-        // Only recalculate if data changed
-        const cacheKey = `${expenses.length}-${categories.length}`;
-        if (!this.calculationCache || 
-            this.calculationCache.expenses.length !== expenses.length ||
-            this.calculationCache.categories.length !== categories.length) {
-          this.calculateTotals();
-          this.calculateCategoryBreakdown();
-          this.getRecentExpenses();
-          this.calculateWeeklyData();
-          this.calculationCache = { expenses, categories };
-        }
+        this.cdr.markForCheck();
 
-        this.refreshQuickSummaryCards();
-        this.cdr.markForCheck(); // Trigger change detection for OnPush
+        deferHeavyWork(() => {
+          if (
+            !this.calculationCache ||
+            this.calculationCache.expenses.length !== expenses.length ||
+            this.calculationCache.categories.length !== categories.length
+          ) {
+            this.calculateTotals();
+            this.calculateWeeklyData();
+            this.calculationCache = { expenses, categories };
+          }
+
+          this.refreshQuickSummaryCards();
+          this.refreshInsightsCache();
+          this.cdr.markForCheck();
+        });
       })
     );
 
     // Subscribe to loading state
     this.subscription.add(
-      this.firebaseService.loading$.subscribe(loading => {
+      this.firebaseService.getPageLoading$().subscribe((loading) => {
         this.isLoading = loading;
         this.cdr.markForCheck();
       })
     );
 
-    // Firebase observables will automatically load data when user is authenticated
-    // No need for manual loadData() call as it creates redundant API requests
-
-    this.refreshQuickSummaryCards();
   }
 
   ngOnDestroy() {
@@ -180,68 +163,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.expenseCount = this.expenses.length;
     this.averageSpent = this.expenseCount > 0 ? this.totalSpent / this.expenseCount : 0;
   }
-
-  calculateCategoryBreakdown() {
-    const breakdown: { [key: string]: number } = {};
-    
-    this.expenses.forEach(expense => {
-      const categoryId = expense.categoryId;
-      if (breakdown[categoryId]) {
-        breakdown[categoryId] += expense.amount;
-      } else {
-        breakdown[categoryId] = expense.amount;
-      }
-    });
-    
-    this.categoryBreakdown = Object.entries(breakdown).map(([categoryId, amount]) => {
-      const category = this.categories.find(c => c.id === categoryId);
-      return {
-        categoryId,
-        categoryName: category?.name || 'Unknown',
-        categoryColor: category?.color || '#666',
-        categoryIcon: category?.icon || '📌',
-        amount,
-        percentage: this.totalSpent > 0 ? (amount / this.totalSpent) * 100 : 0
-      };
-    }).sort((a, b) => b.amount - a.amount);
-  }
-
-  getRecentExpenses() {
-    const filteredExpenses = this.getFilteredExpenses();
-    this.recentExpenses = [...filteredExpenses]
-      .sort((a, b) => {
-        // Ensure proper date parsing and handle potential timezone issues
-        const dateA = new Date(a.date + 'T00:00:00');
-        const dateB = new Date(b.date + 'T00:00:00');
-        
-        // First sort by date descending (latest first)
-        const dateComparison = dateB.getTime() - dateA.getTime();
-        
-        // If dates are the same, sort by creation timestamp (newer expenses come first)
-        if (dateComparison === 0) {
-          // If both have createdAt, sort by timestamp
-          if (a.createdAt && b.createdAt) {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          }
-          // If only one has createdAt, prioritize the one with timestamp (newer)
-          else if (a.createdAt && !b.createdAt) {
-            return -1; // a comes first (has timestamp)
-          }
-          else if (!a.createdAt && b.createdAt) {
-            return 1; // b comes first (has timestamp)
-          }
-          // If neither has createdAt, fall back to ID comparison
-          else {
-            return b.id.localeCompare(a.id);
-          }
-        }
-        
-        return dateComparison;
-      })
-      .slice(0, 5);
-  }
-
-
 
   calculateWeeklyData() {
     const now = new Date();
@@ -257,25 +178,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .reduce((sum, expense) => sum + expense.amount, 0);
   }
 
-  getCategoryName(categoryId: string): string {
-    const category = this.categoryMap.get(categoryId); // Use Map for O(1) lookup
-    return category?.name || 'Unknown';
-  }
-
-  getCategoryColor(categoryId: string): string {
-    const category = this.categoryMap.get(categoryId); // Use Map for O(1) lookup
-    return category?.color || '#666';
-  }
-
-  getCategoryIcon(categoryId: string): string {
-    const category = this.categoryMap.get(categoryId); // Use Map for O(1) lookup
-    return category?.icon || '📌';
-  }
-
-  getCategoryAmountColor(categoryId: string): string {
-    const category = this.categories.find(c => c.id === categoryId);
-    return category?.color || '#3b82f6'; // Default blue color
-  }
 
   // Filter methods
   getFilteredExpenses(): Expense[] {
@@ -444,7 +346,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
 
     this.refreshQuickSummaryCards();
+    this.refreshInsightsCache();
     this.cdr.markForCheck();
+  }
+
+  private refreshInsightsCache(): void {
+    this.spendingAnalytics = this.getSpendingAnalytics();
+    this.smartRecommendations = this.getSmartRecommendations();
   }
 
   // Custom date range methods
@@ -554,10 +462,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.onFilterChange();
   }
 
-  getExpensesByCategory(categoryId: string): Expense[] {
-    return this.getFilteredExpenses().filter(expense => expense.categoryId === categoryId);
-  }
-
   get categoryTotals(): { [key: string]: number } {
     const totals: { [key: string]: number } = {};
     const filteredExpenses = this.getFilteredExpenses();
@@ -623,26 +527,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .sort((a, b) => b.amount - a.amount); // Sort by amount descending
   }
 
-  // Get categories sorted by total expense amount in descending order (only categories with expenses)
-  getCategoriesSortedByExpense(): Category[] {
-    return [...this.categories]
-      .filter(category => {
-        const total = this.categoryTotals[category.id] || 0;
-        return total > 0; // Only include categories with expenses
-      })
-      .sort((a, b) => {
-        const aTotal = this.categoryTotals[a.id] || 0;
-        const bTotal = this.categoryTotals[b.id] || 0;
-        return bTotal - aTotal; // Sort by amount descending
-      });
-  }
-
-  // New enhanced functionality
-
-
-
-
-
   // Budget Progress - Return null since no budget is set
   getBudgetProgress(): BudgetProgress | null {
     return null; // No budget set by user
@@ -663,19 +547,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Savings Tip - Return null since no budget is set
   getSavingsTip(): string | null {
     return null; // No budget set by user
-  }
-
-  // Category Percentage
-  getCategoryPercentage(categoryId: string): number {
-    const total = this.getFilteredTotal();
-    if (total === 0) return 0;
-    const categoryTotal = this.categoryTotals[categoryId] || 0;
-    return parseFloat(((categoryTotal / total) * 100).toFixed(2));
-  }
-
-  // Category Trend - Return null to hide trend percentages (legacy method)
-  getCategoryTrendLegacy(categoryId: string): CategoryTrend | null {
-    return null; // Hide trend percentages
   }
 
   // Insights
@@ -817,103 +688,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
           });
         }
       }, 150); // Slightly longer delay to ensure the section is fully rendered
-    }
-  }
-
-  viewAllExpenses(): void {
-    // Navigate to expenses page
-    this.router.navigate(['/expenses']);
-  }
-
-  async editExpense(expense: Expense): Promise<void> {
-    try {
-      // Get updated description
-      const description = await this.dialogService.prompt(
-        'Enter expense description:',
-        'Edit Expense',
-        expense.description,
-        'text',
-        'Enter description...',
-        'Description'
-      );
-      
-      if (description === null) return; // User cancelled
-      
-      // Get updated amount
-      const amountStr = await this.dialogService.prompt(
-        'Enter expense amount:',
-        'Edit Expense',
-        expense.amount.toString(),
-        'number',
-        'Enter amount...',
-        'Amount (₹)'
-      );
-      
-      if (amountStr === null) return; // User cancelled
-      
-      // Get updated date
-      const dateStr = await this.dialogService.prompt(
-        'Enter expense date:',
-        'Edit Expense',
-        expense.date,
-        'date',
-        '',
-        'Date'
-      );
-      
-      if (dateStr === null) return; // User cancelled
-      
-      // Validate amount
-      const amount = parseFloat(amountStr);
-      if (isNaN(amount) || amount <= 0) {
-        await this.dialogService.error('Invalid Amount! Please enter a valid number greater than 0.');
-        return;
-      }
-
-      // Validate date
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(dateStr)) {
-        await this.dialogService.error('Invalid Date! Please enter date in YYYY-MM-DD format (e.g., 2024-01-15).');
-        return;
-      }
-
-      const updatedExpense: Expense = {
-        ...expense,
-        description,
-        amount: amount,
-        date: dateStr
-      };
-
-      await this.expenseService.update(updatedExpense);
-      await this.dialogService.success('Expense updated successfully!');
-      
-    } catch (error) {
-      console.error('Error editing expense:', error);
-      await this.dialogService.error('Error updating expense. Please try again.');
-    }
-  }
-
-  async deleteExpense(expense: Expense): Promise<void> {
-    // Show confirmation dialog
-    const confirmDelete = await this.dialogService.confirm(
-      `Are you sure you want to delete this expense?\n\nDescription: ${expense.description}\nAmount: ₹${expense.amount}\nDate: ${expense.date}`,
-      'Delete Expense'
-    );
-    
-    if (confirmDelete) {
-      // Show immediate feedback - remove from UI optimistically
-      const originalExpenses = [...this.expenses];
-      this.expenses = this.expenses.filter(e => e.id !== expense.id);
-      
-      try {
-        await this.expenseService.delete(expense.id);
-        await this.dialogService.success('Expense deleted successfully!');
-      } catch (error) {
-        console.error('Error deleting expense:', error);
-        // Restore the expense if deletion failed
-        this.expenses = originalExpenses;
-        await this.dialogService.error('Error deleting expense. Please try again.');
-      }
     }
   }
 
@@ -1269,45 +1043,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return card.title;
   }
 
-  // View category analytics (detailed breakdown)
-  viewCategoryDetails(categoryId: string): void {
-    // Get current filter state
-    const filterState = this.filterStateService.getFilterState();
-    
-    // Navigate to expenses page with category filter and current filter state
-    // This preserves all dashboard filters for detailed analysis
-    this.router.navigate(['/expenses'], { 
-      queryParams: { 
-        category: categoryId,
-        filter: 'category',
-        period: filterState.selectedPeriod,
-        month: filterState.selectedMonth,
-        year: filterState.selectedYear,
-        startDate: filterState.customStartDate,
-        endDate: filterState.customEndDate,
-        monthOnly: filterState.selectedMonthOnly,
-        yearOnly: filterState.selectedYearOnly
-      } 
-    });
-  }
-
   // Get maximum spending amount for chart scaling
   getMaxSpendingAmount(): number {
     const spendingByDay = this.getSpendingByDay();
     if (spendingByDay.length === 0) return 0;
     return Math.max(...spendingByDay.map(d => d.amount));
-  }
-
-  // Format date to day of week
-  getDayOfWeek(date: string): string {
-    return new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
-  }
-
-  // Get maximum expense amount for a category
-  getMaxExpenseForCategory(categoryId: string): number {
-    const expenses = this.getExpensesByCategory(categoryId);
-    if (expenses.length === 0) return 0;
-    return Math.max(...expenses.map(e => e.amount));
   }
 
   // Get current month name for display
@@ -1364,116 +1104,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .filter(expense => new Date(expense.date) >= oneWeekAgo)
       .reduce((total, expense) => total + expense.amount, 0);
   }
-
-  // Get amount indicator
-  getAmountIndicator(amount: number): string {
-    if (amount > 5000) return 'high';
-    if (amount > 1000) return 'medium';
-    return 'low';
-  }
-
-  // Get category insights
-  getCategoryInsights(categoryId: string): any[] {
-    const insights = [];
-    const expenses = this.getExpensesByCategory(categoryId);
-    const total = this.categoryTotals[categoryId] || 0;
-    const avg = expenses.length > 0 ? total / expenses.length : 0;
-    
-    if (total > this.getFilteredTotal() * 0.4) {
-      insights.push({
-        type: 'high',
-        icon: '⚠️',
-        text: 'High spending category'
-      });
-    }
-    
-    if (avg > 2000) {
-      insights.push({
-        type: 'medium',
-        icon: '💰',
-        text: 'High average expense'
-      });
-    }
-    
-    if (expenses.length > 10) {
-      insights.push({
-        type: 'low',
-        icon: '📊',
-        text: 'Frequent expenses'
-      });
-    }
-    
-    return insights;
-  }
-
-  // Get category trend
-  getCategoryTrend(categoryId: string): any {
-    // This is a simplified trend calculation
-    // In a real app, you'd compare with previous periods
-    const currentTotal = this.categoryTotals[categoryId] || 0;
-    const avgTotal = this.getFilteredTotal() / Object.keys(this.categoryTotals).length;
-    
-    if (currentTotal > avgTotal * 1.2) {
-      return {
-        icon: '📈',
-        text: 'Above average'
-      };
-    } else if (currentTotal < avgTotal * 0.8) {
-      return {
-        icon: '📉',
-        text: 'Below average'
-      };
-    } else {
-      return {
-        icon: '➡️',
-        text: 'Stable'
-      };
-    }
-  }
-
-  // Get expense insights
-  getExpenseInsights(expense: Expense): any[] {
-    const insights = [];
-    
-    if (expense.amount > 5000) {
-      insights.push({
-        type: 'high',
-        icon: '💰',
-        text: 'Large expense'
-      });
-    }
-    
-    if (expense.amount > this.getAverageExpense() * 2) {
-      insights.push({
-        type: 'medium',
-        icon: '📊',
-        text: 'Above average'
-      });
-    }
-    
-    const expenseDate = new Date(expense.date);
-    const today = new Date();
-    const daysDiff = Math.floor((today.getTime() - expenseDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff <= 1) {
-      insights.push({
-        type: 'low',
-        icon: '🆕',
-        text: 'Recent'
-      });
-    }
-    
-    return insights;
-  }
-
-  // Get average expense
-  getAverageExpense(): number {
-    if (this.expenses.length === 0) return 0;
-    return this.expenses.reduce((total, expense) => total + expense.amount, 0) / this.expenses.length;
-  }
-
-
-
-
 
 } 

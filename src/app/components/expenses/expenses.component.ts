@@ -892,12 +892,12 @@ export class ExpensesComponent implements OnInit, OnDestroy {
           }
           .header {
             text-align: center;
-            border-bottom: 3px solid #667eea;
+            border-bottom: 3px solid #4f46e5;
             padding-bottom: 20px;
             margin-bottom: 30px;
           }
           .header h1 {
-            color: #667eea;
+            color: #4f46e5;
             margin: 0;
             font-size: 28px;
           }
@@ -927,7 +927,7 @@ export class ExpensesComponent implements OnInit, OnDestroy {
             margin-top: 20px;
           }
           th {
-            background: #667eea;
+            background: #4f46e5;
             color: white;
             padding: 12px;
             text-align: left;

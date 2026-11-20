@@ -267,8 +267,8 @@ import { BackupReminderService } from './core/services/backup-reminder.service';
       height: 100vh;
       min-height: 100vh;
       max-height: 100vh;
-      background: linear-gradient(135deg, #ff8c42 0%, #ffa726 50%, #ffcc02 100%);
-      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+      background: var(--gradient-shell-sidebar);
+      box-shadow: 4px 0 24px rgba(15, 23, 42, 0.35);
       z-index: 460;
       transform: translate3d(-100%, 0, 0);
       transition: transform 0.25s ease;
@@ -291,7 +291,7 @@ import { BackupReminderService } from './core/services/backup-reminder.service';
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
       flex-shrink: 0;
     }
 
@@ -314,21 +314,25 @@ import { BackupReminderService } from './core/services/backup-reminder.service';
       display: flex;
       align-items: center;
       gap: 1rem;
-      padding: 1rem 1.5rem;
-      color: white;
+      padding: 0.85rem 1.25rem;
+      margin: 0 0.65rem;
+      border-radius: 10px;
+      color: var(--color-nav-text);
       text-decoration: none;
-      transition: all 0.3s ease;
-      border-left: 3px solid transparent;
+      transition: background 0.2s ease, color 0.2s ease;
+      border-left: none;
     }
 
     .sidebar-link:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-left-color: rgba(255, 255, 255, 0.5);
+      background: var(--color-nav-hover-bg);
+      color: #f8fafc;
     }
 
     .sidebar-link.active {
-      background: rgba(255, 255, 255, 0.2);
-      border-left-color: white;
+      background: var(--color-nav-active-bg);
+      color: #fff;
+      border-left: 3px solid var(--color-nav-active-border);
+      padding-left: calc(1.25rem - 3px);
     }
 
     .link-icon {
@@ -345,7 +349,7 @@ import { BackupReminderService } from './core/services/backup-reminder.service';
     /* Main Content */
     .main-content {
       flex: 1;
-      background: #f8f9fa;
+      background: var(--gradient-page, var(--bg, #f8fafc));
       transition: filter 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
                   margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       margin-top: 70px; /* Account for fixed header height */
@@ -459,8 +463,8 @@ import { BackupReminderService } from './core/services/backup-reminder.service';
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: var(--gradient-brand-header);
+      color: var(--color-shell-header-text);
       font-size: 1.2rem;
     }
 

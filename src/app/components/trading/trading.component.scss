@@ -42,7 +42,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
@@ -64,7 +64,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
   transition: all 0.3s ease;
@@ -110,7 +110,7 @@
 
 /* Search Card */
 .search-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   border-radius: 20px;
   box-shadow: 0 10px 40px rgba(102, 126, 234, 0.35);
   border: none;
@@ -155,7 +155,7 @@
 
 .search-icon {
   font-size: 1.3rem;
-  color: #667eea;
+  color: var(--primary);
   margin: 0 1rem;
   filter: drop-shadow(0 2px 4px rgba(102, 126, 234, 0.2));
 }
@@ -177,7 +177,7 @@
 }
 
 .clear-search-btn {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+  background: var(--highlight-dark, #dc2626);
   border: none;
   border-radius: 50%;
   width: 32px;
@@ -200,10 +200,10 @@
 
 /* Card Styles */
 .add-trade-card {
-  background: linear-gradient(135deg, #ffffff 0%, #fff8f0 100%);
+  background: var(--card-bg, #fff);
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid #ffe4b3;
+  box-shadow: var(--shadow-section-card, 0 4px 24px rgba(15, 23, 42, 0.08));
+  border: 1px solid var(--border, #e2e8f0);
   overflow: visible;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   margin-bottom: 2rem;
@@ -239,7 +239,7 @@
 }
 
 .card-header-modern {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  background: var(--gradient-section-header);
   color: white;
   padding: 1.5rem 2rem;
   border: none;
@@ -256,7 +256,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
@@ -412,14 +412,14 @@
 }
 
 .form-control-modern:focus {
-  border-color: var(--primary, #667eea);
+  border-color: var(--primary, var(--primary));
   box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
   outline: none;
 }
 
 select.form-control-modern {
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234f46e5' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 1rem center;
   padding-right: 2.5rem;
@@ -444,7 +444,7 @@ select.form-control-modern {
 }
 
 .input-group-modern:focus-within {
-  border-color: var(--primary, #667eea);
+  border-color: var(--primary, var(--primary));
   box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }
 
@@ -464,8 +464,8 @@ select.form-control-modern {
 }
 
 .btn-add-trade {
-  background: linear-gradient(135deg, #e0d5ff 0%, #ffe4b3 100%);
-  color: #666;
+  background: var(--gradient-primary);
+  color: #fff;
   border: none;
   border-radius: 12px;
   padding: 0.875rem 1.5rem;
@@ -476,14 +476,15 @@ select.form-control-modern {
   gap: 0.75rem;
   transition: all 0.3s ease;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   height: 50px;
   white-space: nowrap;
 }
 
 .btn-add-trade:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg), 0 0 20px rgba(79, 70, 229, 0.25);
+  filter: brightness(1.05);
 }
 
 .btn-add-trade:disabled {
@@ -505,12 +506,12 @@ select.form-control-modern {
 
 .btn-icon {
   font-size: 1.2rem;
-  color: #9b6b9b;
+  color: var(--primary);
   font-weight: bold;
 }
 
 .btn-text {
-  color: #666;
+  color: #fff;
   font-weight: 600;
 }
 
@@ -533,7 +534,7 @@ select.form-control-modern {
 
 .form-control:focus,
 .form-select:focus {
-  border-color: #667eea;
+  border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
   outline: none;
   transform: translateY(-1px);
@@ -541,7 +542,7 @@ select.form-control-modern {
 
 .form-select {
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234f46e5' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 1rem center;
   padding-right: 2.5rem;
@@ -590,7 +591,7 @@ input[type="number"] {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
@@ -622,12 +623,12 @@ input[type="number"] {
 }
 
 .btn-outline-primary {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .btn-outline-primary:hover {
-  background: #667eea;
+  background: var(--primary);
   color: white;
 }
 
@@ -654,7 +655,7 @@ input[type="number"] {
 }
 
 .monthly-summary-table thead th {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   font-weight: 700;
   border: none;
@@ -719,7 +720,7 @@ input[type="number"] {
 
 .monthly-summary-row:hover {
   background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
-  border-left-color: #667eea;
+  border-left-color: var(--primary);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.15);
   transform: translateX(3px);
   z-index: 1;
@@ -758,7 +759,7 @@ input[type="number"] {
 }
 
 .daily-summary-table thead th {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   font-weight: 700;
   border: none;
@@ -823,7 +824,7 @@ input[type="number"] {
 
 .daily-summary-row:hover {
   background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
-  border-left-color: #667eea;
+  border-left-color: var(--primary);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.15);
   transform: translateX(3px);
   z-index: 1;
@@ -843,7 +844,7 @@ input[type="number"] {
 
 .daily-summary-row.expanded {
   background: #f1f5f9;
-  border-left: 3px solid #667eea;
+  border-left: 3px solid var(--primary);
 }
 
 .daily-summary-table tbody td {
@@ -926,7 +927,7 @@ input[type="number"] {
 }
 
 .table thead th {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   border: none;
   font-weight: 700;
@@ -998,7 +999,7 @@ input[type="number"] {
 
 .table tbody tr:hover {
   background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
-  border-left-color: #667eea;
+  border-left-color: var(--primary);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.15);
   transform: translateX(3px);
   z-index: 1;
@@ -1051,7 +1052,7 @@ input[type="number"] {
 }
 
 .bg-primary {
-  background-color: #667eea !important;
+  background-color: var(--primary) !important;
 }
 
 .bg-secondary {
@@ -1125,8 +1126,8 @@ input[type="number"] {
 }
 
 .quick-filter-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border-color: var(--primary);
   color: white;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
@@ -1167,7 +1168,7 @@ input[type="number"] {
 }
 
 .custom-date-range-picker .form-control:focus {
-  border-color: #667eea;
+  border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
@@ -1277,7 +1278,7 @@ input[type="number"] {
 }
 
 .page-item .page-link {
-  color: #667eea;
+  color: var(--primary);
   border-color: #e2e8f0;
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
@@ -1285,8 +1286,8 @@ input[type="number"] {
 }
 
 .page-item.active .page-link {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border-color: var(--primary);
   color: white;
 }
 
@@ -1348,7 +1349,7 @@ input[type="number"] {
   left: 0;
   width: 4px;
   height: 100%;
-  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
   transform: scaleY(0);
   transition: transform 0.3s ease;
   border-radius: 16px 0 0 16px;
@@ -1356,9 +1357,9 @@ input[type="number"] {
 
 .trade-card-mobile:active {
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
-  border-color: #667eea;
+  border-color: var(--primary);
   transform: translateY(-2px) scale(0.98);
-  border-left-color: #667eea;
+  border-left-color: var(--primary);
 }
 
 .trade-card-mobile:active::before {
@@ -1437,7 +1438,7 @@ input[type="number"] {
 
 .btn-icon:active:not(:disabled) {
   background: #f8fafc;
-  border-color: #667eea;
+  border-color: var(--primary);
   transform: scale(0.95);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -1507,7 +1508,7 @@ input[type="number"] {
   left: 0;
   width: 4px;
   height: 100%;
-  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
   transform: scaleY(0);
   transition: transform 0.3s ease;
   border-radius: 16px 0 0 16px;
@@ -1515,9 +1516,9 @@ input[type="number"] {
 
 .monthly-summary-card-mobile:active {
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
-  border-color: #667eea;
+  border-color: var(--primary);
   transform: translateY(-2px) scale(0.98);
-  border-left-color: #667eea;
+  border-left-color: var(--primary);
 }
 
 .monthly-summary-card-mobile:active::before {
@@ -1615,7 +1616,7 @@ input[type="number"] {
   left: 0;
   width: 4px;
   height: 100%;
-  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
   transform: scaleY(0);
   transition: transform 0.3s ease;
   border-radius: 16px 0 0 16px;
@@ -1623,9 +1624,9 @@ input[type="number"] {
 
 .daily-summary-card-mobile:active {
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
-  border-color: #667eea;
+  border-color: var(--primary);
   transform: translateY(-2px) scale(0.98);
-  border-left-color: #667eea;
+  border-left-color: var(--primary);
 }
 
 .daily-summary-card-mobile:active::before {
@@ -1633,9 +1634,9 @@ input[type="number"] {
 }
 
 .daily-summary-card-mobile.expanded {
-  border-color: #667eea;
+  border-color: var(--primary);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
-  border-left-color: #667eea;
+  border-left-color: var(--primary);
 }
 
 .daily-summary-header {
@@ -2144,7 +2145,7 @@ input[type="number"] {
 }
 
 .btn-charts {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -2164,7 +2165,7 @@ input[type="number"] {
   }
   
   &.active {
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
   }
   
   .chart-icon {
@@ -2211,7 +2212,7 @@ input[type="number"] {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
     border-radius: 16px 16px 0 0;
   }
   

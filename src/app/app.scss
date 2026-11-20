@@ -8,7 +8,7 @@
 
 /* Header Styles */
 .app-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   padding: 1rem 1.5rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -169,7 +169,7 @@
   justify-content: space-between;
   padding: 1.5rem;
   border-bottom: 1px solid #e9ecef;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
 }
 
@@ -219,12 +219,12 @@
 
 .nav-link:hover {
   background: #f8f9fa;
-  color: #667eea;
+  color: var(--primary);
   transform: translateX(5px);
 }
 
 .nav-link.active {
-  background: #667eea;
+  background: var(--primary);
   color: white;
 }
 
@@ -235,7 +235,7 @@
   top: 0;
   bottom: 0;
   width: 4px;
-  background: #764ba2;
+  background: var(--primary-dark);
 }
 
 .nav-icon {
@@ -343,7 +343,7 @@
   top: 1rem;
   left: 1rem;
   z-index: 1040;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   border: none;
   border-radius: 12px;

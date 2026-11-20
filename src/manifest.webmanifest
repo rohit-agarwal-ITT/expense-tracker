@@ -2,7 +2,7 @@
   "name": "Expense Tracker",
   "short_name": "Expense Tracker",
   "description": "Track your expenses and manage your finances",
-  "theme_color": "#667eea",
+  "theme_color": "#4f46e5",
   "background_color": "#ffffff",
   "display": "standalone",
   "orientation": "portrait",

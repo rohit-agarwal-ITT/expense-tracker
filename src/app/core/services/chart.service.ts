@@ -49,10 +49,10 @@ export interface BarData {
 export class ChartService {
   
   private readonly colorPalette = [
-    '#667eea', '#764ba2', '#f093fb', '#f5576c',
-    '#4facfe', '#00f2fe', '#43e97b', '#38f9d7',
-    '#ffecd2', '#fcb69f', '#a8edea', '#fed6e3',
-    '#d299c2', '#fef9d7', '#667eea', '#764ba2'
+    '#4f46e5', '#6366f1', '#7c3aed', '#8b5cf6',
+    '#0d9488', '#14b8a6', '#0891b2', '#0284c7',
+    '#64748b', '#475569', '#334155', '#1e293b',
+    '#4338ca', '#5b21b6', '#3730a3', '#312e81'
   ];
 
   constructor() {
@@ -101,8 +101,8 @@ export class ChartService {
       datasets: [{
         label: 'Monthly Spending',
         data,
-        borderColor: '#667eea',
-        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        borderColor: '#4f46e5',
+        backgroundColor: 'rgba(79, 70, 229, 0.1)',
         tension: 0.4
       }]
     };
@@ -171,8 +171,8 @@ export class ChartService {
       datasets: [{
         label: 'Monthly Spending',
         data,
-        backgroundColor: 'rgba(102, 126, 234, 0.8)',
-        borderColor: '#667eea',
+        backgroundColor: 'rgba(79, 70, 229, 0.75)',
+        borderColor: '#4f46e5',
         borderWidth: 1
       }]
     };

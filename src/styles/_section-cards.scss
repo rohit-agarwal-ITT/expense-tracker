@@ -1,0 +1,88 @@
+/* Shared collapsible section cards (Expenses, Trading, Categories, etc.) */
+
+.card-header-modern {
+  background: var(--gradient-section-header);
+  color: #fff;
+  border: none;
+  position: relative;
+}
+
+.card-header-modern h3,
+.card-header-modern h4,
+.card-header-modern h5,
+.card-header-modern .header-title {
+  color: #fff;
+  font-weight: 600;
+}
+
+.card-header-modern:hover {
+  filter: brightness(1.03);
+}
+
+.header-icon-small {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-surface-card,
+.add-expense-card,
+.add-trade-card,
+.filters-card,
+.expenses-list-card {
+  background: var(--card-bg, #fff);
+  border: var(--border-section-card);
+  border-radius: var(--radius-xl, 20px);
+  box-shadow: var(--shadow-section-card);
+}
+
+.card-body-modern {
+  background: var(--card-bg, #fff);
+}
+
+/* Primary form actions */
+.btn-add-expense,
+.btn-add-trade-primary {
+  background: var(--gradient-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md, 12px);
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btn-add-expense:hover:not(:disabled),
+.btn-add-trade-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg), 0 0 20px rgba(79, 70, 229, 0.25);
+}
+
+/* Secondary / clear actions on light backgrounds */
+.btn-clear-filters--solid {
+  background: #f1f5f9;
+  color: var(--text-primary, #1e293b);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-md, 12px);
+  font-weight: 600;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.btn-clear-filters--solid:hover {
+  background: #e2e8f0;
+  border-color: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+.filters-header-bar,
+.search-filters-header,
+.monthly-reports .filters-header,
+.monthly-reports .section-header {
+  background: var(--gradient-section-header);
+  color: #fff;
+}

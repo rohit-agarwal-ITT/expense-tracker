@@ -716,7 +716,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Monthly Trends Chart
   getMonthlyTrends(): MonthlyTrend[] {
     const months = [];
-    const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
+    const colors = ['#4f46e5', '#6366f1', '#7c3aed', '#0d9488', '#0891b2', '#64748b'];
     
     for (let i = 5; i >= 0; i--) {
       const date = new Date();

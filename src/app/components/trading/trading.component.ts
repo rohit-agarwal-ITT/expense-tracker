@@ -1643,7 +1643,7 @@ export class TradingComponent implements OnInit, OnDestroy {
       datasets: [{
         label: 'Net P&L',
         data: netPnl,
-        borderColor: '#667eea',
+        borderColor: '#4f46e5',
         backgroundColor: 'rgba(102, 126, 234, 0.1)',
         borderWidth: 3,
         fill: true,

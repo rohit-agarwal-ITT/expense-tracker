@@ -658,7 +658,7 @@ export class ExpenseAnalysisComponent implements OnInit, OnDestroy {
       labels: Array.from({ length: 30 }, (_, i) => ''),
       datasets: [{
         data: data,
-        borderColor: '#667eea',
+        borderColor: '#4f46e5',
         backgroundColor: 'rgba(102, 126, 234, 0.1)',
         borderWidth: 2,
         fill: true,

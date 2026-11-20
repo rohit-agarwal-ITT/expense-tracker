@@ -14,7 +14,7 @@
 }
 
 .analytics-header {
-  background: linear-gradient(135deg, #ff6b9d 0%, #ffa726 50%, #ffeb3b 100%);
+  background: var(--gradient-section-header);
   color: white;
   padding: 1rem 1.5rem;
   display: flex;
@@ -33,7 +33,7 @@
 }
 
 .btn-toggle-analytics {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-brand-header);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -72,7 +72,7 @@
 
 .analytics-icon {
   font-size: 1.5rem;
-  background: #667eea;
+  background: var(--primary);
   border-radius: 6px;
   width: 40px;
   height: 40px;
@@ -110,7 +110,7 @@
 }
 
 .card-header-modern {
-  background: linear-gradient(135deg, #ff6b9d 0%, #ffa726 50%, #ffeb3b 100%);
+  background: var(--gradient-section-header);
   color: white;
   padding: 1.5rem;
   border-bottom: 1px solid #e9ecef;
@@ -126,7 +126,7 @@
 
 .header-icon {
   font-size: 1.5rem;
-  background: #667eea;
+  background: var(--primary);
   border-radius: 6px;
   width: 35px;
   height: 35px;
@@ -375,7 +375,7 @@
 }
 
 .search-filters-header {
-  background: linear-gradient(135deg, #ff6b9d 0%, #ffa726 50%, #ffeb3b 100%);
+  background: var(--gradient-section-header);
   color: white;
   padding: 1rem 1.5rem;
   display: flex;
@@ -396,9 +396,9 @@
 }
 
 .btn-clear-filters {
-  background: linear-gradient(135deg, #ffd23f 0%, #3ec300 100%);
-  color: white;
-  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   padding: 0.875rem 1.5rem;
   border-radius: 12px;
   cursor: pointer;
@@ -408,14 +408,15 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  box-shadow: 0 5px 20px rgba(255, 210, 63, 0.3);
+  box-shadow: none;
   height: 50px;
   white-space: nowrap;
 }
 
 .btn-clear-filters:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(255, 210, 63, 0.4);
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .search-filters-grid {
@@ -448,11 +449,11 @@
 
 .form-select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--primary);
 }
 
 .form-select:hover {
-  border-color: #667eea;
+  border-color: var(--primary);
 }
 
 /* Categories Section */
@@ -464,7 +465,7 @@
 }
 
 .section-header {
-  background: linear-gradient(135deg, #ff6b9d 0%, #ffa726 50%, #ffeb3b 100%);
+  background: var(--gradient-section-header);
   color: white;
   padding: 1.5rem;
   display: flex;
@@ -529,7 +530,7 @@
 }
 
 .initialize-section button, .cleanup-section button {
-  background: #667eea;
+  background: var(--primary);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -883,7 +884,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-brand-header);
   color: white;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
@@ -1063,7 +1064,7 @@
 
 .category-icon-large {
   font-size: 2.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-brand-header);
   color: white;
   border-radius: 50%;
   width: 70px;

@@ -82,7 +82,7 @@
           <span class="header-icon-small me-2">{{ isEditMode ? '✏️' : '➕' }}</span>
           <h5 class="mb-0">{{ isEditMode ? 'Edit Expense' : 'Add New Expense' }}</h5>
         </div>
-        <button class="collapse-toggle-btn" type="button" (click)="toggleAddExpenseSection()">
+        <button class="collapse-toggle-btn collapse-toggle-btn--on-dark" type="button" (click)="toggleAddExpenseSection()">
           <span class="collapse-icon" [class.rotated]="!isAddExpenseExpanded">▼</span>
         </button>
       </div>
@@ -214,7 +214,7 @@
           <span class="header-icon-small me-2">🔍</span>
           <h5 class="mb-0">Filters</h5>
         </div>
-        <button class="collapse-toggle-btn" type="button" (click)="toggleFiltersSection()">
+        <button class="collapse-toggle-btn collapse-toggle-btn--on-dark" type="button" (click)="toggleFiltersSection()">
           <span class="collapse-icon" [class.rotated]="!isFiltersExpanded">▼</span>
         </button>
       </div>
@@ -300,41 +300,108 @@
   <!-- Expenses List -->
   <div class="expenses-list-card" *ngIf="!isLoading">
     <div class="card-header-modern">
-      <div class="d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center">
-          <span class="header-icon-small me-2">📋</span>
-          <h5 class="mb-0">All Expenses</h5>
-        </div>
-        <div class="d-flex align-items-center gap-3">
-          <div class="expenses-summary" *ngIf="isExpensesListExpanded">
-            <div class="total-amount">
+      <div class="list-header-row">
+        <div class="list-header-title">
+          <span class="header-icon-small" aria-hidden="true">📋</span>
+          <div class="list-header-text">
+            <h5 class="mb-0">All Expenses</h5>
+            <p class="list-header-meta" *ngIf="!isExpensesListExpanded">
               <app-indian-currency
                 [amount]="bulkSelectionMode && selectedExpenseIds.size > 0 ? getSelectedExpensesTotal() : getTotalAmount()"
                 [abbreviate]="false">
               </app-indian-currency>
-            </div>
-            <div class="expenses-count">
-              {{bulkSelectionMode && selectedExpenseIds.size > 0 ? (selectedExpenseIds.size + (selectedExpenseIds.size === 1 ? ' expense' : ' expenses') + ' selected') : (getFilteredExpenses().length + ' expenses')}}
-            </div>
+              <span class="list-header-meta-sep">·</span>
+              <span>{{ bulkSelectionMode && selectedExpenseIds.size > 0
+                ? (selectedExpenseIds.size + (selectedExpenseIds.size === 1 ? ' selected' : ' selected'))
+                : (getFilteredExpenses().length + ' expenses') }}</span>
+            </p>
           </div>
-          <div class="selection-mode-toggle" *ngIf="isExpensesListExpanded">
-            <label class="toggle-switch">
-              <input 
-                type="checkbox" 
-                [checked]="bulkSelectionMode"
-                (change)="onSelectionModeToggle($event)">
-              <span class="toggle-slider"></span>
-              <span class="toggle-label">{{bulkSelectionMode ? 'Selection Mode' : 'Normal Mode'}}</span>
-            </label>
-          </div>
-          <button class="collapse-toggle-btn" type="button" (click)="toggleExpensesListSection()">
-            <span class="collapse-icon" [class.rotated]="!isExpensesListExpanded">▼</span>
-          </button>
         </div>
+        <button
+          class="collapse-toggle-btn collapse-toggle-btn--on-dark"
+          type="button"
+          (click)="toggleExpensesListSection()"
+          [attr.aria-expanded]="isExpensesListExpanded"
+          aria-label="Toggle expenses list">
+          <span class="collapse-icon" [class.rotated]="!isExpensesListExpanded">▼</span>
+        </button>
       </div>
     </div>
     
     <div class="card-body-modern collapsible-content" [class.collapsed]="!isExpensesListExpanded">
+      <div class="list-toolbar" *ngIf="isExpensesListExpanded">
+        <div class="list-toolbar__primary">
+          <div class="list-toolbar__cluster">
+            <div class="list-toolbar__stats stat-summary"
+              [class.stat-summary--selection]="bulkSelectionMode && selectedExpenseIds.size > 0"
+              role="group"
+              [attr.aria-label]="bulkSelectionMode && selectedExpenseIds.size > 0 ? 'Selected expenses summary' : 'Filtered expenses summary'">
+              <span class="stat-summary__eyebrow">
+                {{ bulkSelectionMode && selectedExpenseIds.size > 0 ? 'Selected total' : 'Filtered total' }}
+              </span>
+              <div class="stat-summary__values">
+                <span class="stat-summary__amount">
+                  <app-indian-currency
+                    [amount]="bulkSelectionMode && selectedExpenseIds.size > 0 ? getSelectedExpensesTotal() : getTotalAmount()"
+                    [abbreviate]="false">
+                  </app-indian-currency>
+                </span>
+                <span class="stat-summary__badge">
+                  {{ bulkSelectionMode && selectedExpenseIds.size > 0
+                    ? (selectedExpenseIds.size + (selectedExpenseIds.size === 1 ? ' selected' : ' selected'))
+                    : (getFilteredExpenses().length + ' expenses') }}
+                </span>
+              </div>
+            </div>
+            <div class="list-toolbar__mode">
+              <label class="mode-toggle">
+                <input
+                  type="checkbox"
+                  class="mode-toggle__input"
+                  [checked]="bulkSelectionMode"
+                  (change)="onSelectionModeToggle($event)">
+                <span class="mode-toggle__track" aria-hidden="true">
+                  <span class="mode-toggle__thumb"></span>
+                </span>
+                <span class="mode-toggle__text">{{ bulkSelectionMode ? 'Selection mode' : 'Select multiple' }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="list-toolbar__bulk" *ngIf="bulkSelectionMode">
+          <button class="btn-select-all" type="button" (click)="toggleSelectAll()">
+            <span class="btn-select-all__box" aria-hidden="true">{{ isAllSelected() ? '☑' : '☐' }}</span>
+            <span>{{ isAllSelected() ? 'Deselect all' : 'Select all' }}</span>
+            <span class="btn-select-all__count">({{ getTotalFilteredCount() }})</span>
+          </button>
+          <p class="list-toolbar__hint" *ngIf="selectedExpenseIds.size === 0">
+            Tap expenses below to select them for bulk delete.
+          </p>
+          <p class="list-toolbar__hint list-toolbar__hint--progress" *ngIf="selectedExpenseIds.size > 0 && !isAllSelected()">
+            {{ selectedExpenseIds.size }} of {{ getTotalFilteredCount() }} selected
+          </p>
+          <div class="list-toolbar__bulk-actions" *ngIf="selectedExpenseIds.size > 0">
+            <button
+              class="btn-bulk-action btn-bulk-delete"
+              (click)="bulkDeleteExpenses()"
+              type="button"
+              [disabled]="isBulkDeleting">
+              <app-loading
+                *ngIf="isBulkDeleting"
+                message="Deleting..."
+                type="button"
+                size="small">
+              </app-loading>
+              <span *ngIf="!isBulkDeleting" class="btn-content-vertical">
+                <span class="btn-icon">🗑️</span>
+                <span class="btn-text">Delete</span>
+                <span class="btn-count">({{ selectedExpenseIds.size }})</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
       <!-- Skeleton Loading for Expenses List -->
       <div class="expenses-list" *ngIf="isLoading">
         <app-skeleton 
@@ -346,41 +413,6 @@
             {width: 40, height: 14, marginBottom: 0}
           ]">
         </app-skeleton>
-      </div>
-
-      <!-- Bulk Actions Bar -->
-      <div class="bulk-actions-bar" *ngIf="bulkSelectionMode && isExpensesListExpanded">
-        <div class="bulk-actions-left">
-          <button class="btn-select-all" (click)="toggleSelectAll()" type="button">
-            <span class="btn-icon">{{isAllSelected() ? '☑️' : '☐'}}</span>
-            <span class="btn-text">{{isAllSelected() ? 'Deselect All' : 'Select All'}} ({{getTotalFilteredCount()}})</span>
-          </button>
-          <span class="selection-hint" *ngIf="selectedExpenseIds.size === 0">
-            Select expenses to perform bulk actions
-          </span>
-          <span class="selection-progress" *ngIf="selectedExpenseIds.size > 0 && !isAllSelected()">
-            {{selectedExpenseIds.size}} of {{getTotalFilteredCount()}} selected
-          </span>
-        </div>
-        <div class="bulk-actions-right" *ngIf="selectedExpenseIds.size > 0">
-          <button 
-            class="btn-bulk-action btn-bulk-delete" 
-            (click)="bulkDeleteExpenses()" 
-            type="button"
-            [disabled]="isBulkDeleting">
-            <app-loading 
-              *ngIf="isBulkDeleting" 
-              message="Deleting..." 
-              type="button" 
-              size="small">
-            </app-loading>
-            <span *ngIf="!isBulkDeleting" class="btn-content-vertical">
-              <span class="btn-icon">🗑️</span>
-              <span class="btn-text">Delete</span>
-              <span class="btn-count">({{selectedExpenseIds.size}})</span>
-            </span>
-          </button>
-        </div>
       </div>
 
       <div class="expenses-list" *ngIf="!isLoading && getFilteredExpenses().length > 0; else noExpenses">

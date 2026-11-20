@@ -102,7 +102,7 @@
 
 /* Add Category Card */
 .add-category-card {
-  background: white;
+  background: var(--surface-card-solid, #f8fafc);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e9ecef;
@@ -458,7 +458,7 @@
 
 /* Categories Section */
 .categories-section {
-  background: white;
+  background: var(--surface-card-solid, #f8fafc);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e9ecef;

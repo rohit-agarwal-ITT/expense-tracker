@@ -2,6 +2,7 @@
 @use 'styles/tokens';
 @use 'styles/page-layout';
 @use 'styles/section-cards';
+@use 'styles/surfaces';
 @use 'styles/auth';
 
 :root {
@@ -33,10 +34,10 @@
   --gradient-bg: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   
   /* Background Colors */
-  --bg: #f8fafc;
-  --bg-secondary: #f1f5f9;
-  --card-bg: #ffffff;
-  --card-bg-hover: #fefefe;
+  --bg: var(--surface-body, #eef2f7);
+  --bg-secondary: #e8edf4;
+  --card-bg: var(--surface-card-solid, #f8fafc);
+  --card-bg-hover: #f1f5f9;
   
   /* Text Colors */
   --text-primary: #1e293b;

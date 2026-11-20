@@ -1,0 +1,48 @@
+/* Shared page surfaces — replaces flat #fff bodies on cards and panels */
+
+.page-shell,
+.main-content,
+.content-container {
+  background: transparent;
+}
+
+.card-body-modern,
+.list-toolbar,
+.stat-summary,
+.add-expense-card,
+.add-trade-card,
+.filters-card,
+.expenses-list-card,
+.add-category-card,
+.categories-section,
+.reports-section,
+.filters-section,
+.detailed-view,
+.stat-card,
+.analytics-card,
+.backup-card,
+.data-backup-page .backup-card {
+  background: var(--surface-card-solid);
+}
+
+.list-toolbar__primary {
+  background: var(--surface-inset);
+}
+
+.list-toolbar__cluster,
+.list-toolbar__bulk,
+.stat-summary {
+  background: var(--surface-card-solid);
+}
+
+/* Form fields stay bright for readability */
+input:not([type='checkbox']):not([type='radio']),
+textarea,
+select,
+.form-control,
+.form-select,
+.form-control-modern,
+.form-select-modern,
+.search-input-group {
+  background: var(--surface-input, #fff);
+}

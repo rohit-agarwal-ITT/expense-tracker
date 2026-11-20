@@ -15,7 +15,7 @@
 
 /* Statistics Cards */
 .stat-card {
-  background: white;
+  background: var(--surface-card-solid, #f8fafc);
   border-radius: 16px;
   padding: 1.75rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);

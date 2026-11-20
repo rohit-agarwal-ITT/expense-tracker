@@ -15,7 +15,15 @@
   --gradient-header-hero: linear-gradient(135deg, #4338ca 0%, #5b21b6 55%, var(--primary) 100%);
   /* In-page section bars (Add form, Filters, list headers) — matches page hero, slightly deeper */
   --gradient-section-header: linear-gradient(135deg, #312e81 0%, var(--primary-deeper) 38%, var(--primary-dark) 72%, var(--primary) 100%);
-  --gradient-page: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  --gradient-page: linear-gradient(165deg, #e2e8f0 0%, #eef2f7 38%, #f1f5f9 72%, #eef2ff 100%);
+
+  /* Surfaces — slate canvas + soft cards (not flat white) */
+  --surface-body: #eef2f7;
+  --surface-panel: #f4f6f9;
+  --surface-card-solid: #f8fafc;
+  --surface-card: linear-gradient(180deg, #fafbfc 0%, #f1f5f9 100%);
+  --surface-inset: #e8edf4;
+  --surface-input: #ffffff;
   --gradient-primary: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
   --shadow-section-card: 0 4px 24px rgba(15, 23, 42, 0.08);
   --border-section-card: 1px solid #e2e8f0;
